@@ -1,6 +1,5 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { TelegramUserEntity } from './telegram-user.entity';
 
 @Module({
     imports: [],
@@ -24,7 +23,7 @@ export class DatabaseModule {
                 }),
             ],
             providers: [],
-            exports: [TypeOrmModule, TypeOrmModule.forFeature([TelegramUserEntity])],
+            exports: [TypeOrmModule],
         };
     }
 }

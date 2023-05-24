@@ -3,30 +3,12 @@ import { TelegramBotModule } from './telegram-bot.module';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import * as config from 'config';
-
-const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');
+import { DatabaseModule } from './database/database.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forRoot({
-            type: 'postgres',
-            host: 'db',
-            port: 5432,
-            username: 'postgres',
-            password: 'example',
-            database: 'mydb',
-            entities: [],
-            synchronize: true,
-            autoLoadEntities: true,
-            logger: 'simple-console',
-            logging: [],
-        }),
-        TelegramBotModule,
-        OpenaiModule,
-    ],
+    imports: [DatabaseModule.forRoot(), TelegramBotModule, OpenaiModule],
     controllers: [AppController],
     providers: [AppService],
+    exports: [DatabaseModule],
 })
 export class AppModule {}
