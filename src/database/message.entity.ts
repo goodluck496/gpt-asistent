@@ -12,6 +12,9 @@ export class MessageEntity {
     @Column({ type: 'text' })
     text: string;
 
+    @Column({ nullable: true })
+    sessionId: number;
+
     @ManyToOne(() => TelegramUserSessionEntity, (us) => us.id)
     session: TelegramUserSessionEntity;
 

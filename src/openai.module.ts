@@ -1,7 +1,6 @@
 import { Inject, Module } from '@nestjs/common';
 import * as config from 'config';
-import { Configuration, OpenAIApi } from 'openai';
-import { ChatCompletionRequestMessage } from 'openai/api';
+import { Configuration, OpenAIApi, ChatCompletionRequestMessage } from 'openai';
 
 export class OpenAiService {
     constructor(@Inject('OPEN_AI') private openAi: OpenAIApi) {}
@@ -24,8 +23,6 @@ export class OpenAiService {
         {
             provide: 'OPEN_AI',
             useFactory: () => {
-                console.log('factory');
-
                 const configuration = new Configuration({
                     organization: config.get('OPENAI_ORG_KEY'),
                     apiKey: config.get('OPENAI_API_KEY'),

@@ -1,30 +1,30 @@
-import { Inject, Injectable, Module, Type } from '@nestjs/common';
+import { Inject, Injectable, Logger, Module, Provider, Type } from '@nestjs/common';
 import * as config from 'config';
 
 import { Telegraf } from 'telegraf';
-import { message } from 'telegraf/filters';
-import { OpenAiService, OpenaiModule } from './openai.module';
+import { OpenaiModule, OpenAiService } from './openai.module';
 import { Repository } from 'typeorm';
 import { TelegramUserEntity } from './database/telegram-user.entity';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
-import StartCommand from './bot-commands/start.command';
-import { IBaseCommand } from './bot-commands/types';
+import * as BotCommands from './bot-commands';
+import * as BotEvents from './bot-events';
+import { IBaseCommand } from './bot-commands';
 import { TelegramUserSessionEntity } from './database/telegram-user-session-entity';
-import { LeaveCommand } from './bot-commands/leave.command';
-import { GptEnableCommand } from './bot-commands/gpt-on.command';
-import { GptDisableCommand } from './bot-commands/gpt-off.command';
-import { StateCommand } from './bot-commands/state.command';
-import { HelpCommand } from './bot-commands/help.command';
 import { MessageEntity } from './database/message.entity';
 import { IBaseEvent } from './bot-events/types';
-import { TextMessageEvent } from './bot-events/text-message.event';
 
 const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');
 
 @Injectable()
 export class TelegramBotService {
-    commands: Type<IBaseCommand>[] = [StartCommand, LeaveCommand, GptEnableCommand, GptDisableCommand, StateCommand, HelpCommand];
-    events: Type<IBaseEvent>[] = [TextMessageEvent];
+    private readonly logger = new Logger(TelegramBotService.name);
+
+    commands: Type<IBaseCommand>[] = Object.keys(BotCommands)
+        .filter((c) => c.endsWith('Command'))
+        .map((command) => BotCommands[command]);
+    events: Type<IBaseEvent>[] = Object.keys(BotEvents)
+        .filter((e) => e.endsWith('Event'))
+        .map((event) => BotEvents[event]);
 
     constructor(
         @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
@@ -40,12 +40,14 @@ export class TelegramBotService {
 
     registerCommands(): void {
         this.commands.forEach((command) => {
+            this.logger.log(`Register command - ${command.name}`);
             new command().register(this).handle();
         });
     }
 
     registerEvents(): void {
         this.events.forEach((event) => {
+            this.logger.log(`Register event - ${event.name}`);
             new event().register(this).handle();
         });
     }
@@ -65,12 +67,20 @@ export class TelegramBotService {
         {
             provide: 'TELEGRAM_BOT',
             useFactory: () => {
-                console.log('init telegraf');
-
                 return new Telegraf(TELEGRAM_TOKEN);
             },
         },
         TelegramBotService,
+
+        ...Object.keys(BotCommands)
+            .filter((c) => c.endsWith('Command'))
+            .map(
+                (command) =>
+                    ({
+                        provide: command,
+                        useClass: BotCommands[command],
+                    } as Provider),
+            ),
     ],
 })
 export class TelegramBotModule {}

@@ -3,7 +3,7 @@ import { TelegramBotService } from '../telegram-bot.module';
 import { message } from 'telegraf/filters';
 import { Context } from 'telegraf';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
-import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai/api';
+import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { MessageEntity } from '../database/message.entity';
 
 export class TextMessageEvent implements IBaseEvent {
@@ -21,7 +21,9 @@ export class TextMessageEvent implements IBaseEvent {
             ctx.sendChatAction('typing');
             const user = await this.service.tgUsersRepo.findOneBy({ telegramUserId: ctx.from.id });
             if (!user) {
-                console.log(`Не найшел юзера с ID - ${ctx.from.id}`);
+                const errMsg = `Не найшел юзера с ID - ${ctx.from.id}`;
+                console.log(errMsg);
+                ctx.reply(errMsg);
                 return;
             }
             const session = await this.service.tgUserSessionRepo.findOneBy({ user, isActive: true });
@@ -42,7 +44,7 @@ export class TextMessageEvent implements IBaseEvent {
     }
 
     async sendToGpt({ ctx, text, session }: { ctx: Context; text: string; session: TelegramUserSessionEntity }): Promise<void> {
-        const sessionMessages: MessageEntity[] = await this.service.messageRepo.findBy({ session });
+        const sessionMessages: MessageEntity[] = await this.service.messageRepo.find({ where: { sessionId: session.id } });
         const messageForSend: ChatCompletionRequestMessage[] = [];
 
         if (sessionMessages.length) {
@@ -61,6 +63,7 @@ export class TextMessageEvent implements IBaseEvent {
                     content: text,
                 },
             );
+            console.log(sessionMessages, messageForSend);
         } else {
             messageForSend.push({
                 role: ChatCompletionRequestMessageRoleEnum.User,
@@ -68,12 +71,18 @@ export class TextMessageEvent implements IBaseEvent {
             });
         }
 
+        // await ctx.reply(JSON.stringify(messageForSend, null, 4));
+
         const aiMessage = await this.service.openAiService.createCompletion(messageForSend);
-        await this.service.messageRepo.save({
-            text: aiMessage,
-            gptAnswer: true,
-            session,
-        });
+        await this.service.messageRepo.save([
+            { id: null, session, text, gptAnswer: false },
+            {
+                id: null,
+                text: aiMessage,
+                gptAnswer: true,
+                session,
+            },
+        ]);
 
         await ctx.reply(aiMessage || 'Gpt не ответил');
     }

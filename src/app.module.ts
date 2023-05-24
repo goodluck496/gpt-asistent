@@ -17,6 +17,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
             entities: [],
             synchronize: true,
             autoLoadEntities: true,
+            logger: 'simple-console',
+            logging: [],
         }),
         TelegramBotModule,
         OpenaiModule,
