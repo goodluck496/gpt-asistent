@@ -5,23 +5,22 @@ import { TelegramBotService } from '../telegram-bot.module';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 
-@Injectable()
 export class StartCommand implements IBaseCommand {
+    private readonly logger = new Logger(TelegramBotService.name);
     command = Commands.START;
-    service: TelegramBotService;
 
     constructor(
-        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
-        @InjectRepository(TelegramUserEntity) private tgUsersRepo: Repository<TelegramUserEntity>,
-        @InjectRepository(TelegramUserSessionEntity) private tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
+        @Inject('TELEGRAM_BOT') private readonly bot: Telegraf,
+        @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
+        @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
     ) {
-        console.log('bot --- ', this.bot);
+        this.handle();
     }
 
-    handle(): this {
-        this.service.bot.start(async (ctx: Context) => {
+    handle(): void {
+        this.bot.start(async (ctx: Context) => {
             const user = await this.tgUsersRepo.findOneBy({ telegramUserId: ctx.from.id });
 
             if (!user) {
@@ -30,8 +29,6 @@ export class StartCommand implements IBaseCommand {
                 this.forExistedUser(ctx, user);
             }
         });
-
-        return this;
     }
 
     async forNewUser(ctx: Context): Promise<void> {
@@ -52,10 +49,5 @@ export class StartCommand implements IBaseCommand {
         await this.tgUserSessionRepo.save(this.tgUserSessionRepo.create({ user, isActive: true }));
 
         ctx.reply(`Добро пожаловать ${user.firstName} ${user.secondName}, готов ответить на ваши вопросы! =)`);
-    }
-
-    register(service: TelegramBotService): this {
-        this.service = service;
-        return this;
     }
 }

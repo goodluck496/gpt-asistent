@@ -1,15 +1,27 @@
-import { TelegramBotService } from 'src/telegram-bot.module';
 import { Commands, IBaseCommand } from './types';
-import { Context } from 'telegraf';
+import { Context, Telegraf } from 'telegraf';
 import * as moment from 'moment';
+import { Inject } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { TelegramUserEntity } from '../database/telegram-user.entity';
+import { Repository } from 'typeorm';
+import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
+import { MessageEntity } from '../database/message.entity';
 
 export class StateCommand implements IBaseCommand {
     command = Commands.STATE;
-    service: TelegramBotService;
 
-    handle(): this {
-        this.service.bot.command(this.command, async (ctx: Context) => {
-            const users = await this.service.tgUsersRepo.find({
+    constructor(
+        @Inject('TELEGRAM_BOT') private readonly bot: Telegraf,
+        @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
+        @InjectRepository(MessageEntity) private readonly messageRepo: Repository<MessageEntity>,
+    ) {
+        this.handle();
+    }
+
+    handle(): void {
+        this.bot.command(this.command, async (ctx: Context) => {
+            const users = await this.tgUsersRepo.find({
                 relations: { sessions: true },
                 where: { telegramUserId: ctx.from.id },
             });
@@ -23,7 +35,7 @@ export class StateCommand implements IBaseCommand {
                 return;
             }
 
-            const messageCountInSession = await this.service.messageRepo.findAndCountBy({ session: activeSession });
+            const messageCountInSession = await this.messageRepo.findAndCountBy({ session: activeSession });
 
             ctx.replyWithHTML(`<code>
     GPT - ${activeSession.gptEnable};
@@ -32,12 +44,5 @@ export class StateCommand implements IBaseCommand {
     Session start - ${moment(activeSession.createdAt).format('DD.MM.Y HH:mm:ss')}
 </code>`);
         });
-
-        return this;
-    }
-
-    register(service: TelegramBotService): this {
-        this.service = service;
-        return this;
     }
 }

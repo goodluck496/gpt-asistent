@@ -1,34 +1,38 @@
-import { Context } from 'telegraf';
+import { Context, Telegraf } from 'telegraf';
 import { Commands, IBaseCommand } from './types';
-import { TelegramBotService } from 'src/telegram-bot.module';
+import { Inject } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { TelegramUserEntity } from '../database/telegram-user.entity';
+import { Repository } from 'typeorm';
+import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
 
 export class GptDisableCommand implements IBaseCommand {
     command = Commands.GPT_OFF;
 
-    service: TelegramBotService;
+    constructor(
+        @Inject('TELEGRAM_BOT') private readonly bot: Telegraf,
+        @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
+        @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
+    ) {
+        this.handle();
+    }
 
-    handle(): this {
-        this.service.bot.command(this.command, async (ctx: Context) => {
+    handle(): void {
+        this.bot.command(this.command, async (ctx: Context) => {
             ctx.reply('GPT отключен');
 
-            const user = await this.service.tgUsersRepo.findOneBy({ telegramUserId: ctx.from.id });
+            const user = await this.tgUsersRepo.findOneBy({ telegramUserId: ctx.from.id });
             if (!user) {
                 return;
             }
-            const sessions = await this.service.tgUserSessionRepo.findBy({ user, isActive: true });
+            const sessions = await this.tgUserSessionRepo.findBy({ user, isActive: true });
             if (!sessions.length) {
                 ctx.reply('Для начала нужно ввести команду /start');
                 return;
             }
             sessions.forEach((session) => {
-                this.service.tgUserSessionRepo.update(session.id, { gptEnable: false });
+                this.tgUserSessionRepo.update(session.id, { gptEnable: false });
             });
         });
-        return this;
-    }
-
-    register(service: TelegramBotService): this {
-        this.service = service;
-        return this;
     }
 }

@@ -12,19 +12,13 @@ import { IBaseCommand } from './bot-commands';
 import { TelegramUserSessionEntity } from './database/telegram-user-session-entity';
 import { MessageEntity } from './database/message.entity';
 import { IBaseEvent } from './bot-events/types';
+import * as events from 'events';
 
 const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');
 
 @Injectable()
 export class TelegramBotService {
     private readonly logger = new Logger(TelegramBotService.name);
-
-    commands: Type<IBaseCommand>[] = Object.keys(BotCommands)
-        .filter((c) => c.endsWith('Command'))
-        .map((command) => BotCommands[command]);
-    events: Type<IBaseEvent>[] = Object.keys(BotEvents)
-        .filter((e) => e.endsWith('Event'))
-        .map((event) => BotEvents[event]);
 
     constructor(
         @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
@@ -33,23 +27,7 @@ export class TelegramBotService {
         @InjectRepository(MessageEntity) public readonly messageRepo: Repository<MessageEntity>,
         public readonly openAiService: OpenAiService,
     ) {
-        this.registerCommands();
-        this.registerEvents();
         this.run();
-    }
-
-    registerCommands(): void {
-        this.commands.forEach((command) => {
-            this.logger.log(`Register command - ${command.name}`);
-            new command().register(this).handle();
-        });
-    }
-
-    registerEvents(): void {
-        this.events.forEach((event) => {
-            this.logger.log(`Register event - ${event.name}`);
-            new event().register(this).handle();
-        });
     }
 
     run(): void {
@@ -71,7 +49,6 @@ export class TelegramBotService {
             },
         },
         TelegramBotService,
-
         ...Object.keys(BotCommands)
             .filter((c) => c.endsWith('Command'))
             .map(
@@ -79,8 +56,20 @@ export class TelegramBotService {
                     ({
                         provide: command,
                         useClass: BotCommands[command],
+                        inject: ['TELEGRAM_BOT'],
+                    } as Provider),
+            ),
+        ...Object.keys(BotEvents)
+            .filter((e) => e.endsWith('Event'))
+            .map(
+                (event) =>
+                    ({
+                        provide: event,
+                        useClass: BotEvents[event],
+                        inject: ['TELEGRAM_BOT', OpenAiService],
                     } as Provider),
             ),
     ],
+    exports: ['TELEGRAM_BOT'],
 })
 export class TelegramBotModule {}

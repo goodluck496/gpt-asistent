@@ -9,9 +9,6 @@ export enum Events {
 
 export interface IBaseEvent {
     event: Events;
-    service: TelegramBotService;
 
-    handle(): this;
-
-    register(service: TelegramBotService): this;
+    handle(): void;
 }
