@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, Module, Provider, Type } from '@nestjs/common';
+import { Inject, Injectable, Logger, Module, Provider } from '@nestjs/common';
 import * as config from 'config';
 
 import { Telegraf } from 'telegraf';
@@ -8,11 +8,8 @@ import { TelegramUserEntity } from './database/telegram-user.entity';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import * as BotCommands from './bot-commands';
 import * as BotEvents from './bot-events';
-import { IBaseCommand } from './bot-commands';
 import { TelegramUserSessionEntity } from './database/telegram-user-session-entity';
 import { MessageEntity } from './database/message.entity';
-import { IBaseEvent } from './bot-events/types';
-import * as events from 'events';
 
 const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');
 

@@ -1,10 +1,9 @@
 import { OpenaiModule } from './openai.module';
 import { TelegramBotModule } from './telegram-bot.module';
-import { Inject, Module, Scope } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Telegraf } from 'telegraf';
 import * as config from 'config';
 
 const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');

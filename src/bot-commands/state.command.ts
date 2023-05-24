@@ -5,7 +5,6 @@ import { Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TelegramUserEntity } from '../database/telegram-user.entity';
 import { Repository } from 'typeorm';
-import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
 import { MessageEntity } from '../database/message.entity';
 
 export class StateCommand implements IBaseCommand {

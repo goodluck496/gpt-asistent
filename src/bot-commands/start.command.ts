@@ -8,8 +8,8 @@ import { TelegramUserSessionEntity } from '../database/telegram-user-session-ent
 import { Inject, Logger } from '@nestjs/common';
 
 export class StartCommand implements IBaseCommand {
-    private readonly logger = new Logger(TelegramBotService.name);
     command = Commands.START;
+    private readonly logger = new Logger(TelegramBotService.name);
 
     constructor(
         @Inject('TELEGRAM_BOT') private readonly bot: Telegraf,
