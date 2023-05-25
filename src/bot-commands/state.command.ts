@@ -8,10 +8,12 @@ import { Repository } from 'typeorm';
 import { MessageEntity } from '../database/message.entity';
 
 export class StateCommand implements IBaseCommand {
+    order = 2;
     command = Commands.STATE;
+    description = 'возвращает краткий список параметров сессии';
 
     constructor(
-        @Inject('TELEGRAM_BOT') private readonly bot: Telegraf,
+        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
         @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
         @InjectRepository(MessageEntity) private readonly messageRepo: Repository<MessageEntity>,
     ) {
@@ -34,11 +36,10 @@ export class StateCommand implements IBaseCommand {
                 return;
             }
 
-            const messageCountInSession = await this.messageRepo.findAndCountBy({ session: activeSession });
+            const messageCountInSession = await this.messageRepo.findAndCountBy({ sessionId: activeSession.id });
 
             ctx.replyWithHTML(`<code>
     GPT - ${activeSession.gptEnable};
-    Messages in session - ${messageCountInSession[1]}
     Gpt answers - ${messageCountInSession[0].map((el) => el.gptAnswer).length}
     Session start - ${moment(activeSession.createdAt).format('DD.MM.Y HH:mm:ss')}
 </code>`);

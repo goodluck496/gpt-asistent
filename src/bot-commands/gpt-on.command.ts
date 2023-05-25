@@ -7,10 +7,12 @@ import { Repository } from 'typeorm';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
 
 export class GptEnableCommand implements IBaseCommand {
+    order = 3;
     command = Commands.GPT_ON;
+    description = 'включает GPT помошника';
 
     constructor(
-        @Inject('TELEGRAM_BOT') private readonly bot: Telegraf,
+        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
         @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
         @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
     ) {

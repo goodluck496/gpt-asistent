@@ -3,9 +3,11 @@ import { Context, Telegraf } from 'telegraf';
 import { Inject } from '@nestjs/common';
 
 export class HelpCommand implements IBaseCommand {
+    order = 999;
     command = Commands.HELP;
+    description = 'подсказка';
 
-    constructor(@Inject('TELEGRAM_BOT') private readonly bot: Telegraf) {
+    constructor(@Inject('TELEGRAM_BOT') public readonly bot: Telegraf) {
         this.handle();
     }
 

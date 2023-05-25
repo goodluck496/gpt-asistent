@@ -7,10 +7,12 @@ import { Repository } from 'typeorm';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
 
 export class LeaveCommand implements IBaseCommand {
+    order = 1;
     command = Commands.LEAVE;
+    description = 'завершает текущую сессию с ботом';
 
     constructor(
-        @Inject('TELEGRAM_BOT') private readonly bot: Telegraf,
+        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
         @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
         @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
     ) {

@@ -1,18 +1,18 @@
 import { Context, Telegraf } from 'telegraf';
 import { Commands, IBaseCommand } from './types';
 import { TelegramUserEntity } from 'src/database/telegram-user.entity';
-import { TelegramBotService } from '../telegram-bot.module';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
-import { Inject, Logger } from '@nestjs/common';
+import { Inject } from '@nestjs/common';
 
 export class StartCommand implements IBaseCommand {
+    order = 0;
     command = Commands.START;
-    private readonly logger = new Logger(TelegramBotService.name);
+    description = 'запускает сессию с ботом. Пока сессия активна, можно общаться с ботом';
 
     constructor(
-        @Inject('TELEGRAM_BOT') private readonly bot: Telegraf,
+        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
         @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
         @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
     ) {
@@ -40,14 +40,19 @@ export class StartCommand implements IBaseCommand {
             secondName: ctx.from.last_name,
         });
         const user = await this.tgUsersRepo.save(newUser);
-        await this.tgUserSessionRepo.save(this.tgUserSessionRepo.create({ user, isActive: true }));
+        await this.tgUserSessionRepo.save(this.tgUserSessionRepo.create({ user, chatId: ctx.chat.id, isActive: true }));
 
         ctx.reply(`Добро пожаловать ${newUser.firstName} ${newUser.secondName}, я сохранил о тебе немного информации =)`);
     }
 
     async forExistedUser(ctx: Context, user: TelegramUserEntity): Promise<void> {
-        await this.tgUserSessionRepo.save(this.tgUserSessionRepo.create({ user, isActive: true }));
+        const activeSessions = await this.tgUserSessionRepo.findBy({ userId: user.id, isActive: true });
+        if (activeSessions.length) {
+            void ctx.reply('Уже есть активная сессия');
+            return;
+        }
+        await this.tgUserSessionRepo.save(this.tgUserSessionRepo.create({ user, chatId: ctx.chat.id, isActive: true }));
 
-        ctx.reply(`Добро пожаловать ${user.firstName} ${user.secondName}, готов ответить на ваши вопросы! =)`);
+        void ctx.reply(`Добро пожаловать ${user.firstName} ${user.secondName}, готов ответить на ваши вопросы! =)`);
     }
 }

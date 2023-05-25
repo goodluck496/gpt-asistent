@@ -7,8 +7,14 @@ export class TelegramUserSessionEntity {
     @PrimaryGeneratedColumn()
     id: number;
 
+    @Column({ name: 'chat_id', nullable: true })
+    chatId: number;
+
     @ManyToOne(() => TelegramUserEntity, (user) => user.sessions, { lazy: true })
     user: TelegramUserEntity;
+
+    @Column({ nullable: false })
+    userId: number;
 
     @OneToMany(() => MessageEntity, (m) => m.session)
     messages: MessageEntity[];
