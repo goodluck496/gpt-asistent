@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, Module, Provider } from '@nestjs/common';
 import * as config from 'config';
 
-import { Markup, Telegraf } from 'telegraf';
+import { Telegraf } from 'telegraf';
 import { OpenaiModule, OpenAiService } from './openai.module';
 import { Repository } from 'typeorm';
 import { TelegramUserEntity } from './database/telegram-user.entity';
@@ -34,12 +34,17 @@ export class TelegramBotService {
 
     run(): void {
         this.logger.verbose('Run bot');
+
+        this.bot.command('test', (ctx) => {
+            console.log('test command', ctx.message.text);
+        });
+
         void this.bot.launch();
 
         this.tgUserSessionRepo.findBy({ isActive: true }).then((sessions) => {
             const chatIds = Array.from(new Set(sessions.map((el) => el.chatId)));
             chatIds.forEach((chatId) => {
-                this.bot.telegram.sendMessage(Number(chatId), 'Привет!!! Я снова к вашим услугам');
+                // this.bot.telegram.sendMessage(Number(chatId), 'Привет!!! Я снова к вашим услугам');
             });
         });
 
@@ -79,7 +84,7 @@ export class TelegramBotService {
         {
             provide: 'TELEGRAM_BOT',
             useFactory: () => {
-                return new Telegraf(TELEGRAM_TOKEN);
+                return new Telegraf(TELEGRAM_TOKEN, {});
             },
         },
         TelegramBotService,

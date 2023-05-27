@@ -1,6 +1,8 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { TelegramUserEntity } from './telegram-user.entity';
 import { MessageEntity } from './message.entity';
+import { JoinColumn } from 'typeorm';
+import { TelegramUserSessionOptionsEntity } from './telegram-user-session-options.entity';
 
 @Entity()
 export class TelegramUserSessionEntity {
@@ -18,6 +20,10 @@ export class TelegramUserSessionEntity {
 
     @OneToMany(() => MessageEntity, (m) => m.session)
     messages: MessageEntity[];
+
+    @OneToMany(() => TelegramUserSessionOptionsEntity, (tso) => tso.session)
+    @JoinColumn()
+    options: TelegramUserSessionOptionsEntity[];
 
     @Column({ name: 'is_active', default: false })
     isActive: boolean;

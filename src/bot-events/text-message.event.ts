@@ -1,6 +1,6 @@
 import { Events, IBaseEvent } from './types';
 import { message } from 'telegraf/filters';
-import { Context, Telegraf } from 'telegraf';
+import { Context, Input, Telegraf } from 'telegraf';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { MessageEntity } from '../database/message.entity';
@@ -9,6 +9,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { TelegramUserEntity } from '../database/telegram-user.entity';
 import { Repository } from 'typeorm';
 import { OpenAiService } from '../openai.module';
+import axios, { AxiosRequestConfig } from 'axios';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { TextMessage } from 'typegram/message';
+import * as config from 'config';
+
+const VOICE_RSS_TOKEN: string = config.get('VOICE_RSS_TOKEN');
 
 export class TextMessageEvent implements IBaseEvent {
     event: Events.TEXT;
@@ -24,7 +31,7 @@ export class TextMessageEvent implements IBaseEvent {
     }
 
     handle(): void {
-        this.bot.on(message('text'), async (ctx) => {
+        this.bot.on(message('text'), async (ctx: Context<TextMessage>) => {
             if (ctx.message.text.startsWith('/')) {
                 console.log(`
 Это сообщения является командой, но небыло обработано. 
@@ -96,7 +103,49 @@ export class TextMessageEvent implements IBaseEvent {
         await ctx.reply(aiMessage || 'Gpt не ответил');
     }
 
-    async reply(ctx: Context): Promise<void> {
-        await ctx.reply(JSON.stringify(ctx.message, null, 4));
+    async reply(ctx: Context<TextMessage>): Promise<void> {
+        const response = await this.textToSpeech(ctx.message.text);
+        if (!response) {
+            console.log('Не получилось преобразовать фразу в голос');
+            return;
+        }
+        // const pathOfFile = path.resolve(__dirname, 'voice.mp3');
+        // fs.writeFileSync(pathOfFile, Buffer.alloc(response.length, response));
+        //
+        // // ctx.reply(Buffer.alloc(response).toString());
+        // await ctx.replyWithVoice(Input.fromReadableStream(fs.createReadStream(pathOfFile), 'FILENAME1111'));
+
+        ctx.replyWithVoice(Input.fromBuffer(response));
+        //
+        // await ctx.reply(JSON.stringify(response, null, 4));
+
+        // ctx.replyWithAudio();
+        // await ctx.reply(JSON.stringify(ctx.message, null, 4));
+    }
+
+    async textToSpeech(text: string): Promise<Buffer> {
+        const encodedParams = new URLSearchParams();
+        encodedParams.set('key', VOICE_RSS_TOKEN);
+        encodedParams.set('hl', 'ru-ru');
+        encodedParams.set('r', '0');
+        encodedParams.set('c', 'MP3');
+        // encodedParams.set('ssml', 'true');
+        encodedParams.set('f', '16khz_16bit_stereo');
+        encodedParams.set('src', text);
+
+        const options: AxiosRequestConfig = {
+            method: 'GET',
+            url: 'http://api.voicerss.org',
+            responseType: 'arraybuffer',
+            params: encodedParams,
+        };
+
+        try {
+            const response = await axios.request(options);
+            return Buffer.from(response.data, 'binary');
+        } catch (error) {
+            console.error('error', error);
+            return null;
+        }
     }
 }
