@@ -1,7 +1,10 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { TelegramUserSessionEntity } from './telegram-user-session-entity';
 
-export enum SessionOptionKeys {}
+export enum SessionOptionKeys {
+    GPT_ENABLE = 'gpt-enable',
+    VOICE_ENABLE = 'voice-enable',
+}
 
 @Entity()
 export class TelegramUserSessionOptionsEntity {
@@ -10,6 +13,9 @@ export class TelegramUserSessionOptionsEntity {
 
     @ManyToOne(() => TelegramUserSessionEntity, (ts) => ts.options)
     session: TelegramUserSessionEntity;
+
+    @Column()
+    sessionId: number;
 
     @Column()
     key: SessionOptionKeys;
