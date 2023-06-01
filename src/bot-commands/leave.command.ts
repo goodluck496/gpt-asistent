@@ -1,51 +1,41 @@
-import { Context, Telegraf } from 'telegraf';
-import { Commands, IBaseCommand } from './types';
+import { Telegraf } from 'telegraf';
+import { Commands } from './types';
 import { Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { TelegramUserEntity } from '../database/telegram-user.entity';
 import { Repository } from 'typeorm';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
+import { BaseCommand } from './base.command';
+import { SessionsService } from '../session/sessions.service';
 
-export class LeaveCommand implements IBaseCommand {
+export class LeaveCommand extends BaseCommand {
     order = 1;
     command = Commands.LEAVE;
     description = 'завершает текущую сессию с ботом';
 
     constructor(
         @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
-        @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
+        private sessionService: SessionsService,
         @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
     ) {
-        this.handle();
+        super();
+        super.registrationHandler();
     }
 
-    handle(): void {
-        this.bot.command(this.command, async (ctx: Context) => {
-            ctx.reply('Приходи еще! =)');
-            if (ctx.chat.type !== 'private') {
-                try {
-                    await ctx.leaveChat();
-                } catch (err) {
-                    console.log('Ошибка...', err);
-                }
+    async commandHandler(ctx) {
+        ctx.reply('Приходи еще! =)');
+        if (ctx.chat.type !== 'private') {
+            try {
+                await ctx.leaveChat();
+            } catch (err) {
+                console.log('Ошибка...', err);
             }
+        }
 
-            const user = await this.tgUsersRepo.findOneBy({ telegramUserId: ctx.from.id });
-            if (!user) {
-                return;
-            }
-            const sessions = await this.tgUserSessionRepo.find({
-                relations: {
-                    user: true,
-                },
-                where: {
-                    isActive: true,
-                },
-            });
+        const session = await this.sessionService.getActiveSessionByChatId(ctx.from.id);
+        if (!session) {
+            return;
+        }
 
-            sessions.forEach(async (session) => {
-                void this.tgUserSessionRepo.update(session.id, { isActive: false });
-            });
-        });
+        void this.tgUserSessionRepo.update(session.id, { isActive: false });
     }
 }

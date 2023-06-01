@@ -18,11 +18,13 @@ export class TelegramUserSessionEntity {
     @Column({ nullable: false })
     userId: number;
 
+    @Column({ nullable: true })
+    tgUserId: number;
+
     @OneToMany(() => MessageEntity, (m) => m.session)
     messages: MessageEntity[];
 
     @OneToMany(() => TelegramUserSessionOptionsEntity, (tso) => tso.session)
-    @JoinColumn()
     options: TelegramUserSessionOptionsEntity[];
 
     @Column({ name: 'is_active', default: false })

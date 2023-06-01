@@ -1,7 +1,8 @@
-import { Inject, Module } from '@nestjs/common';
+import { Inject, Injectable, Module } from '@nestjs/common';
 import * as config from 'config';
 import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from 'openai';
 
+@Injectable()
 export class OpenAiService {
     constructor(@Inject('OPEN_AI') private openAi: OpenAIApi) {}
 

@@ -1,48 +1,40 @@
-import { Commands, IBaseCommand } from './types';
-import { Context, Telegraf } from 'telegraf';
+import { Commands } from './types';
+import { Telegraf } from 'telegraf';
 import * as moment from 'moment';
 import { Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { TelegramUserEntity } from '../database/telegram-user.entity';
 import { Repository } from 'typeorm';
 import { MessageEntity } from '../database/message.entity';
+import { BaseCommand } from './base.command';
+import { SessionsService } from '../session/sessions.service';
 
-export class StateCommand implements IBaseCommand {
+export class StateCommand extends BaseCommand {
     order = 2;
     command = Commands.STATE;
     description = 'возвращает краткий список параметров сессии';
 
     constructor(
         @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
-        @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
+        private sessionService: SessionsService,
         @InjectRepository(MessageEntity) private readonly messageRepo: Repository<MessageEntity>,
     ) {
-        this.handle();
+        super();
+        super.registrationHandler();
     }
 
-    handle(): void {
-        this.bot.command(this.command, async (ctx: Context) => {
-            const users = await this.tgUsersRepo.find({
-                relations: { sessions: true },
-                where: { telegramUserId: ctx.from.id },
-            });
-            if (!users.length) {
-                return;
-            }
-            const user = users[0];
-            const activeSession = user.sessions?.find((el) => el.isActive);
-            if (!activeSession) {
-                ctx.reply('Для начала нужно начать сессию введя команду /start');
-                return;
-            }
+    async commandHandler(ctx) {
+        const activeSession = await this.sessionService.getActiveSessionByChatId(ctx.from.id);
+        if (!activeSession) {
+            ctx.reply('Для начала нужно начать сессию введя команду /start');
+            return;
+        }
 
-            const messageCountInSession = await this.messageRepo.findAndCountBy({ sessionId: activeSession.id });
+        const messageCountInSession = await this.messageRepo.findAndCountBy({ sessionId: activeSession.id });
 
-            ctx.replyWithHTML(`<code>
+        ctx.replyWithHTML(`<code>
     GPT - ${activeSession.gptEnable};
     Gpt answers - ${messageCountInSession[0].map((el) => el.gptAnswer).length}
     Session start - ${moment(activeSession.createdAt).format('DD.MM.Y HH:mm:ss')}
 </code>`);
-        });
     }
 }

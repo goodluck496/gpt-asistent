@@ -8,5 +8,6 @@ import { TelegramUserSessionOptionsEntity } from '../database/telegram-user-sess
 @Module({
     imports: [TypeOrmModule.forFeature([TelegramUserEntity, TelegramUserSessionEntity, TelegramUserSessionOptionsEntity])],
     providers: [SessionsService],
+    exports: [SessionsService],
 })
 export class SessionsModule {}

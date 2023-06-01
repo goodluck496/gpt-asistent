@@ -3,7 +3,7 @@ import { Telegraf } from 'telegraf';
 export enum Commands {
     START = 'start',
     LEAVE = 'leave',
-    GPT_CHAT = 'gptchat',
+    GPT_CHAT = 'gpt',
     STATE = 'state',
     VOICE = 'voice',
     HELP = 'help',
@@ -16,5 +16,13 @@ export interface IBaseCommand {
     description: string;
     bot: Telegraf;
 
-    handle(): void;
+    actions?: KeyboardAction<unknown>[];
+
+    registrationHandler(): void;
 }
+
+export type KeyboardAction<EnumT> = {
+    name: EnumT;
+    title: string;
+    handler: (ctx) => void;
+};

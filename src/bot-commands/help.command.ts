@@ -8,10 +8,10 @@ export class HelpCommand implements IBaseCommand {
     description = 'подсказка';
 
     constructor(@Inject('TELEGRAM_BOT') public readonly bot: Telegraf) {
-        this.handle();
+        this.registrationHandler();
     }
 
-    handle(): void {
+    registrationHandler(): void {
         this.bot.help((ctx: Context) => {
             ctx.reply(
                 `

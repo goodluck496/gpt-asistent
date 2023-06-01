@@ -6,5 +6,5 @@ export enum Events {
 export interface IBaseEvent {
     event: Events;
 
-    handle(): void;
+    registrationHandler(): void;
 }

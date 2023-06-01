@@ -6,7 +6,6 @@ import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } fr
 import { MessageEntity } from '../database/message.entity';
 import { Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { TelegramUserEntity } from '../database/telegram-user.entity';
 import { Repository } from 'typeorm';
 import { OpenAiService } from '../openai.module';
 import axios, { AxiosRequestConfig } from 'axios';
@@ -14,6 +13,9 @@ import axios, { AxiosRequestConfig } from 'axios';
 // @ts-ignore
 import { TextMessage } from 'typegram/message';
 import * as config from 'config';
+import { SessionsService } from '../session/sessions.service';
+import { SessionOptionKeys } from '../database/telegram-user-session-options.entity';
+import { bool } from '../helpers';
 
 const VOICE_RSS_TOKEN: string = config.get('VOICE_RSS_TOKEN');
 
@@ -21,16 +23,18 @@ export class TextMessageEvent implements IBaseEvent {
     event: Events.TEXT;
 
     constructor(
-        @Inject('TELEGRAM_BOT') private readonly bot: Telegraf,
-        @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
-        @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
+        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
+        @Inject(OpenAiService) public openAIService: OpenAiService,
+        public sessionService: SessionsService,
         @InjectRepository(MessageEntity) private readonly messageRepo: Repository<MessageEntity>,
-        @Inject(OpenAiService) private openAIService: OpenAiService,
     ) {
-        this.handle();
+        setTimeout(() => {
+            // команды должны быть зареганы ботом раньше евентов, для этого у последних ставим таймаут
+            this.registrationHandler();
+        }, 1000);
     }
 
-    handle(): void {
+    registrationHandler(): void {
         this.bot.on(message('text'), async (ctx: Context<TextMessage>) => {
             if (ctx.message.text.startsWith('/')) {
                 console.log(`
@@ -39,23 +43,15 @@ export class TextMessageEvent implements IBaseEvent {
                 return;
             }
             ctx.sendChatAction('typing');
-            const user = await this.tgUsersRepo.findOneBy({ telegramUserId: ctx.from.id });
-            if (!user) {
-                const errMsg = `Не найшел юзера с ID - ${ctx.from.id}`;
-                console.log(errMsg);
-                ctx.reply(errMsg);
-                return;
-            }
-            const session = await this.tgUserSessionRepo.findOneBy({ user, isActive: true });
-            if (!session) {
-                ctx.reply('Для начала нужно ввести команду /start');
-                return;
-            }
 
-            if (session.gptEnable) {
-                await this.sendToGpt({ ctx, text: ctx.message.text, session });
-            } else {
-                await this.reply(ctx);
+            const activeSession = await this.sessionService.getActiveSessionByChatId(ctx.message.chat.id);
+            const gptOption = activeSession.options.find((el) => el.key === SessionOptionKeys.GPT_ENABLE);
+            const textToVoice = activeSession.options.find((el) => el.key === SessionOptionKeys.VOICE_ENABLE);
+
+            if (gptOption && bool(gptOption.value)) {
+                await this.sendToGpt({ ctx, text: ctx.message.text, session: activeSession });
+            } else if (textToVoice) {
+                await this.reply(ctx, bool(textToVoice.value));
             }
         });
     }
@@ -89,6 +85,10 @@ export class TextMessageEvent implements IBaseEvent {
 
         // await ctx.reply(JSON.stringify(messageForSend, null, 4));
 
+        const systemMsg = session.options.find((el) => el.key === SessionOptionKeys.GPT_SYSTEM_MSG);
+        if (systemMsg && systemMsg.value) {
+            messageForSend.push({ role: 'system', content: systemMsg.value });
+        }
         const aiMessage = await this.openAIService.createCompletion(messageForSend);
         await this.messageRepo.save([
             { id: null, session, text, gptAnswer: false },
@@ -103,7 +103,7 @@ export class TextMessageEvent implements IBaseEvent {
         await ctx.reply(aiMessage || 'Gpt не ответил');
     }
 
-    async reply(ctx: Context<TextMessage>): Promise<void> {
+    async reply(ctx: Context<TextMessage>, voice: boolean): Promise<void> {
         const response = await this.textToSpeech(ctx.message.text);
         if (!response) {
             console.log('Не получилось преобразовать фразу в голос');

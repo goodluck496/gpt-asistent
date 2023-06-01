@@ -13,6 +13,8 @@ import { TelegramUserSessionEntity } from './database/telegram-user-session-enti
 import { MessageEntity } from './database/message.entity';
 import { ModuleRef } from '@nestjs/core';
 import { BehaviorSubject, filter } from 'rxjs';
+import { SessionsModule } from './session/sessions.module';
+import { SessionsService } from './session/sessions.service';
 
 const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');
 const botCommandTokens = Object.keys(BotCommands).filter((c) => c.endsWith('Command'));
@@ -44,7 +46,9 @@ export class TelegramBotService {
         this.tgUserSessionRepo.findBy({ isActive: true }).then((sessions) => {
             const chatIds = Array.from(new Set(sessions.map((el) => el.chatId)));
             chatIds.forEach((chatId) => {
-                // this.bot.telegram.sendMessage(Number(chatId), 'Привет!!! Я снова к вашим услугам');
+                this.bot.telegram.sendMessage(Number(chatId), 'Привет!!! Я снова к вашим услугам', {
+                    reply_markup: { remove_keyboard: true },
+                });
             });
         });
 
@@ -61,6 +65,7 @@ export class TelegramBotService {
         setTimeout(() => {
             botCommandTokens.forEach(async (command) => {
                 const commandRef: IBaseCommand = await this.moduleRef.get(command);
+                this.logger.log(`command '${commandRef.command}' registered`);
                 commandInstances.next([...commandInstances.value, commandRef]);
             });
         }, 0);
@@ -78,7 +83,11 @@ export class TelegramBotService {
 }
 
 @Module({
-    imports: [OpenaiModule, TypeOrmModule.forFeature([TelegramUserEntity, TelegramUserSessionEntity, MessageEntity])],
+    imports: [
+        OpenaiModule,
+        SessionsModule,
+        TypeOrmModule.forFeature([TelegramUserEntity, TelegramUserSessionEntity, MessageEntity]),
+    ],
     controllers: [],
     providers: [
         {
@@ -98,14 +107,21 @@ export class TelegramBotService {
         ),
         ...Object.keys(BotEvents)
             .filter((e) => e.endsWith('Event'))
-            .map(
-                (event) =>
-                    ({
-                        provide: event,
-                        useClass: BotEvents[event],
-                        inject: ['TELEGRAM_BOT', OpenAiService],
-                    } as Provider),
-            ),
+            .map((event) => {
+                return {
+                    provide: event,
+                    useClass: BotEvents[event],
+                    // useFactory: (tgBot: Telegraf, aiService: OpenAiService, session: SessionsService) => {
+                    //     //todo если допустить, что обработчик сообщений будет зареган раньше команд,
+                    //     // то команды работать не будут
+                    //     // https://ru.stackoverflow.com/questions/1256165/telegram-%D0%B1%D0%BE%D1%82-%D0%BD%D0%B5-%D1%80%D0%B5%D0%B0%D0%B3%D0%B8%D1%80%D1%83%D0%B5%D1%82-%D0%BD%D0%B0-%D0%BA%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B-python-telebot
+                    //     // setTimeout(() => {
+                    //     return new BotEvents[event](tgBot, aiService, session);
+                    //     // }, 100);
+                    // },
+                    inject: ['TELEGRAM_BOT', OpenAiService, SessionsService],
+                } as Provider;
+            }),
     ],
     exports: ['TELEGRAM_BOT'],
 })

@@ -1,73 +1,103 @@
-import { Telegraf } from 'telegraf';
-import { Commands, IBaseCommand } from './types';
+import { Context, NarrowedContext, Telegraf } from 'telegraf';
+import { Commands, IBaseCommand, KeyboardAction } from './types';
 import { Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TelegramUserEntity } from '../database/telegram-user.entity';
 import { Repository } from 'typeorm';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
 import { getCommandArguments } from './helpers';
+import { SessionsService } from '../session/sessions.service';
+import { SessionOptionKeys } from '../database/telegram-user-session-options.entity';
+import { InlineKeyboardButton } from 'typegram/markup';
+import { BaseCommand } from './base.command';
 
-export class GptChatCommand implements IBaseCommand {
+enum GPT_ACTION_ENUM {
+    ENABLE = 'gpt-enable',
+    DISABLE = 'gpt-disable',
+    CONTEXT_HELP = 'context-help',
+    SET_CONTEXT = 'set-context',
+}
+
+export class GptChatCommand extends BaseCommand implements IBaseCommand {
     order = 3;
     command = Commands.GPT_CHAT;
     defaultArg = 'enable';
     description = 'включает и отключает GPT помошника с помощью аргументов enable и disable';
 
+    actions: KeyboardAction<GPT_ACTION_ENUM>[] = [
+        { name: GPT_ACTION_ENUM.ENABLE, title: 'Включить', handler: (ctx) => this.enableGpt(ctx) },
+        { name: GPT_ACTION_ENUM.DISABLE, title: 'Выключить', handler: (ctx) => this.disableGpt(ctx) },
+        { name: GPT_ACTION_ENUM.CONTEXT_HELP, title: 'Задать контекст', handler: (ctx) => this.contextHelp(ctx) },
+    ];
+
     constructor(
         @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
         @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
         @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
+        private readonly sessionService: SessionsService,
     ) {
-        this.handle();
+        super();
+        super.registrationHandler();
     }
 
-    handle(): void {
-        this.bot.command(this.command, async (ctx) => {
-            const commandArguments = getCommandArguments(ctx.message.text);
-
-            if (!commandArguments.length) {
-                void this.enableGpt(ctx);
-            }
-            if (commandArguments[0] === 'enable') {
-                void this.enableGpt(ctx);
-            }
-            if (commandArguments[0] === 'disable') {
-                void this.disableGpt(ctx);
-            }
-        });
+    applyCommandWithArguments(ctx, action: string, commandAgs) {
+        if (action === GPT_ACTION_ENUM.SET_CONTEXT) {
+            void this.setSystemMessage(ctx, commandAgs.join(' '));
+            return;
+        }
     }
 
-    async enableGpt(ctx): Promise<void> {
+    private async enableGpt(ctx): Promise<void> {
+        const session = await this.sessionService.getActiveSessionByChatId(ctx.from.id);
+        if (!session) {
+            ctx.reply('Для начала нужно ввести команду /start');
+            return;
+        }
         ctx.reply('Сейчас будем спрашивать у GPT');
 
-        const user = await this.tgUsersRepo.findOneBy({ telegramUserId: ctx.from.id });
-        if (!user) {
+        const gptOption = session.options.find((el) => el.key === SessionOptionKeys.GPT_ENABLE);
+        if (gptOption && gptOption.value == String(true)) {
             return;
         }
-        const sessions = await this.tgUserSessionRepo.findBy({ user, isActive: true });
-        if (!sessions.length) {
-            ctx.reply('Для начала нужно ввести команду /start');
-            return;
-        }
-        sessions.forEach((session) => {
-            this.tgUserSessionRepo.update(session.id, { gptEnable: true });
-        });
+        await this.sessionService.addAndUpdateOption(session.id, SessionOptionKeys.GPT_ENABLE, 'boolean', true);
     }
 
-    async disableGpt(ctx): Promise<void> {
-        ctx.reply('GPT отключен');
-
-        const user = await this.tgUsersRepo.findOneBy({ telegramUserId: ctx.from.id });
-        if (!user) {
-            return;
-        }
-        const sessions = await this.tgUserSessionRepo.findBy({ user, isActive: true });
-        if (!sessions.length) {
+    private async disableGpt(ctx): Promise<void> {
+        const session = await this.sessionService.getActiveSessionByChatId(ctx.from.id);
+        if (!session) {
             ctx.reply('Для начала нужно ввести команду /start');
             return;
         }
-        sessions.forEach((session) => {
-            this.tgUserSessionRepo.update(session.id, { gptEnable: false });
-        });
+        ctx.reply('GPT отключен');
+
+        const gptOption = session.options.find((el) => el.key === SessionOptionKeys.GPT_ENABLE);
+        if (gptOption && gptOption.value == String(false)) {
+            return;
+        }
+        await this.sessionService.addAndUpdateOption(session.id, SessionOptionKeys.GPT_ENABLE, 'boolean', false);
+    }
+
+    private contextHelp(ctx): void {
+        ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+        ctx.replyWithHTML(`
+<b>Чтобы задать контекст общения с AI можно воспользоваться командой</b>
+<i>/gpt set-context "мой контекст, о котором будет знать помошник"</i>
+<i>Текст контекста вводится без кавычек.</i>
+            `);
+    }
+
+    private async setSystemMessage(ctx, message?: string): Promise<void> {
+        if (!message) {
+            ctx.reply('Вы не ввели системное сообдение для асистента');
+            return;
+        }
+
+        const session = await this.sessionService.getActiveSessionByChatId(ctx.from.id);
+        if (!session) {
+            ctx.reply('Для начала нужно ввести команду /start');
+            return;
+        }
+
+        await this.sessionService.addAndUpdateOption(session.id, SessionOptionKeys.GPT_SYSTEM_MSG, 'string', message);
     }
 }
