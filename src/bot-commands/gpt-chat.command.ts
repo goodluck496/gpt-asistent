@@ -1,14 +1,12 @@
-import { Context, NarrowedContext, Telegraf } from 'telegraf';
+import { Telegraf } from 'telegraf';
 import { Commands, IBaseCommand, KeyboardAction } from './types';
 import { Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { TelegramUserEntity } from '../database/telegram-user.entity';
 import { Repository } from 'typeorm';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
-import { getCommandArguments } from './helpers';
 import { SessionsService } from '../session/sessions.service';
 import { SessionOptionKeys } from '../database/telegram-user-session-options.entity';
-import { InlineKeyboardButton } from 'typegram/markup';
 import { BaseCommand } from './base.command';
 
 enum GPT_ACTION_ENUM {

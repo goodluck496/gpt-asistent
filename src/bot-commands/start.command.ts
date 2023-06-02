@@ -1,5 +1,5 @@
 import { Context, Telegraf } from 'telegraf';
-import { Commands, IBaseCommand } from './types';
+import { Commands } from './types';
 import { TelegramUserEntity } from 'src/database/telegram-user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';

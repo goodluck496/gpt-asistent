@@ -1,7 +1,6 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { TelegramUserEntity } from './telegram-user.entity';
 import { MessageEntity } from './message.entity';
-import { JoinColumn } from 'typeorm';
 import { TelegramUserSessionOptionsEntity } from './telegram-user-session-options.entity';
 
 @Entity()
