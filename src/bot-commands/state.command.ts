@@ -31,10 +31,15 @@ export class StateCommand extends BaseCommand {
 
         const messageCountInSession = await this.messageRepo.findAndCountBy({ sessionId: activeSession.id });
 
+        const sessionOptions = activeSession.options;
+
         ctx.replyWithHTML(`<code>
-    GPT - ${activeSession.gptEnable};
-    Gpt answers - ${messageCountInSession[0].map((el) => el.gptAnswer).length}
-    Session start - ${moment(activeSession.createdAt).format('DD.MM.Y HH:mm:ss')}
+[options]
+${sessionOptions.map((el) => el.key + ' - ' + el.value).join('\r\n')}
+
+[any params]    
+Gpt answers - ${messageCountInSession[0].map((el) => el.gptAnswer).length}
+Session start - ${moment(activeSession.createdAt).format('DD.MM.Y HH:mm:ss')}
 </code>`);
     }
 }

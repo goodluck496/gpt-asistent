@@ -15,6 +15,7 @@ import { ModuleRef } from '@nestjs/core';
 import { BehaviorSubject, filter } from 'rxjs';
 import { SessionsModule } from './session/sessions.module';
 import { SessionsService } from './session/sessions.service';
+import { VoiceModule } from './voice/voice.module';
 
 const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');
 const botCommandTokens = Object.keys(BotCommands).filter((c) => c.endsWith('Command'));
@@ -46,9 +47,9 @@ export class TelegramBotService {
         this.tgUserSessionRepo.findBy({ isActive: true }).then((sessions) => {
             const chatIds = Array.from(new Set(sessions.map((el) => el.chatId)));
             chatIds.forEach((chatId) => {
-                this.bot.telegram.sendMessage(Number(chatId), 'Привет!!! Я снова к вашим услугам', {
-                    reply_markup: { remove_keyboard: true },
-                });
+                // this.bot.telegram.sendMessage(Number(chatId), 'Привет!!! Я снова к вашим услугам', {
+                //     reply_markup: { remove_keyboard: true },
+                // });
             });
         });
 
@@ -86,6 +87,7 @@ export class TelegramBotService {
     imports: [
         OpenaiModule,
         SessionsModule,
+        VoiceModule,
         TypeOrmModule.forFeature([TelegramUserEntity, TelegramUserSessionEntity, MessageEntity]),
     ],
     controllers: [],

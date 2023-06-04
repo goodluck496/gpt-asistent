@@ -16,6 +16,7 @@ import * as config from 'config';
 import { SessionsService } from '../session/sessions.service';
 import { SessionOptionKeys } from '../database/telegram-user-session-options.entity';
 import { bool } from '../helpers';
+import { VoiceService } from '../voice/voice.service';
 
 const VOICE_RSS_TOKEN: string = config.get('VOICE_RSS_TOKEN');
 
@@ -26,6 +27,7 @@ export class TextMessageEvent implements IBaseEvent {
         @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
         @Inject(OpenAiService) public openAIService: OpenAiService,
         public sessionService: SessionsService,
+        public voiceService: VoiceService,
         @InjectRepository(MessageEntity) private readonly messageRepo: Repository<MessageEntity>,
     ) {
         setTimeout(() => {
@@ -49,6 +51,7 @@ export class TextMessageEvent implements IBaseEvent {
             const textToVoice = activeSession.options.find((el) => el.key === SessionOptionKeys.VOICE_ENABLE);
 
             if (gptOption && bool(gptOption.value)) {
+                ctx.reply('Жду ответа от GPT...');
                 await this.sendToGpt({ ctx, text: ctx.message.text, session: activeSession });
             } else if (textToVoice) {
                 await this.reply(ctx, bool(textToVoice.value));
@@ -104,48 +107,19 @@ export class TextMessageEvent implements IBaseEvent {
     }
 
     async reply(ctx: Context<TextMessage>, voice: boolean): Promise<void> {
-        const response = await this.textToSpeech(ctx.message.text);
-        if (!response) {
-            console.log('Не получилось преобразовать фразу в голос');
+        if (!voice) {
+            console.log('Эхо ответ');
+            void ctx.replyWithHTML(`<code>${JSON.stringify(ctx.message, null, 4)}</code>`);
             return;
         }
-        // const pathOfFile = path.resolve(__dirname, 'voice.mp3');
-        // fs.writeFileSync(pathOfFile, Buffer.alloc(response.length, response));
-        //
-        // // ctx.reply(Buffer.alloc(response).toString());
-        // await ctx.replyWithVoice(Input.fromReadableStream(fs.createReadStream(pathOfFile), 'FILENAME1111'));
 
-        ctx.replyWithVoice(Input.fromBuffer(response));
-        //
-        // await ctx.reply(JSON.stringify(response, null, 4));
-
-        // ctx.replyWithAudio();
-        // await ctx.reply(JSON.stringify(ctx.message, null, 4));
-    }
-
-    async textToSpeech(text: string): Promise<Buffer> {
-        const encodedParams = new URLSearchParams();
-        encodedParams.set('key', VOICE_RSS_TOKEN);
-        encodedParams.set('hl', 'ru-ru');
-        encodedParams.set('r', '0');
-        encodedParams.set('c', 'MP3');
-        // encodedParams.set('ssml', 'true');
-        encodedParams.set('f', '16khz_16bit_stereo');
-        encodedParams.set('src', text);
-
-        const options: AxiosRequestConfig = {
-            method: 'GET',
-            url: 'http://api.voicerss.org',
-            responseType: 'arraybuffer',
-            params: encodedParams,
-        };
-
-        try {
-            const response = await axios.request(options);
-            return Buffer.from(response.data, 'binary');
-        } catch (error) {
-            console.error('error', error);
-            return null;
+        const speech = await this.voiceService.textToSpeech(ctx.message.text);
+        if (!speech) {
+            console.log('Не получилось преобразовать фразу в голос');
+            void ctx.reply('Не удалось перевести текст в речь...');
+            return;
         }
+
+        void ctx.replyWithVoice(Input.fromBuffer(speech));
     }
 }

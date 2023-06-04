@@ -29,9 +29,6 @@ export class TelegramUserSessionEntity {
     @Column({ name: 'is_active', default: false })
     isActive: boolean;
 
-    @Column({ name: 'gpt_enable', default: false })
-    gptEnable: boolean;
-
     @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 }
