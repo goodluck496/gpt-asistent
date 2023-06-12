@@ -8,6 +8,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DeleteResult, Repository } from 'typeorm';
 import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
 import * as moment from 'moment';
+import { MessageEntity } from '../database/message.entity';
+import { FindOptionsOrder } from 'typeorm/find-options/FindOptionsOrder';
+import { FindOptionsWhere } from 'typeorm/find-options/FindOptionsWhere';
 
 @Injectable()
 export class SessionsService {
@@ -16,6 +19,8 @@ export class SessionsService {
         private sessionRepo: Repository<TelegramUserSessionEntity>,
         @InjectRepository(TelegramUserSessionOptionsEntity)
         private sessionOptionRepo: Repository<TelegramUserSessionOptionsEntity>,
+        @InjectRepository(MessageEntity)
+        private messageRepo: Repository<MessageEntity>,
     ) {}
 
     getActiveSessionByChatId(chatId: number): Promise<TelegramUserSessionEntity> {
@@ -53,7 +58,7 @@ export class SessionsService {
     }
 
     getSessionOptions(sessionId: number): Promise<TelegramUserSessionOptionsEntity[]> {
-        return this.sessionOptionRepo.findBy({ id: sessionId });
+        return this.sessionOptionRepo.findBy({ sessionId: sessionId });
     }
 
     getOption(sessionId: number, key: SessionOptionKeys): Promise<TelegramUserSessionOptionsEntity | undefined> {
@@ -63,6 +68,30 @@ export class SessionsService {
                 key,
             })
             .then((values) => values[0]);
+    }
+
+    saveMessages(sessonId: number, messages: Partial<MessageEntity>[]): Promise<MessageEntity[]> {
+        return this.messageRepo.save(
+            messages.map((el) =>
+                this.messageRepo.create({
+                    ...el,
+                }),
+            ),
+        );
+    }
+
+    getMessagesForSession(
+        sessionId,
+        where: FindOptionsWhere<MessageEntity>,
+        order: FindOptionsOrder<MessageEntity>,
+    ): Promise<MessageEntity[]> {
+        return this.messageRepo.find({
+            where: {
+                ...where,
+                sessionId,
+            },
+            order,
+        });
     }
 
     private getValueType(value: unknown): SessionOptionTypes {

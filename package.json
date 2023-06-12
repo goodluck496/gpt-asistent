@@ -30,7 +30,13 @@
     "telegraf": "4.12.2",
     "typeorm": "^0.3.16",
     "typescript": "^4.7.4",
-    "moment": "2.29.4"
+    "moment": "2.29.4",
+    "websocket": "^1.0.34",
+    "uuid": "^9.0.0",
+    "ffmpeg-static": "^5.1.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "ws": "^8.13.0",
+    "wav":"^1.0.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^9.0.0",
@@ -43,6 +49,12 @@
     "@types/supertest": "^2.0.11",
     "@typescript-eslint/eslint-plugin": "^5.0.0",
     "@typescript-eslint/parser": "^5.0.0",
+    "@types/websocket": "^1.0.5",
+    "@types/uuid": "^9.0.1",
+    "@types/ffmpeg-static": "^3.0.1",
+    "@types/fluent-ffmpeg": "^2.1.21",
+    "@types/ws": "^8.5.5",
+    "@types/wav": "^1.0.1",
     "eslint": "^8.0.1",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-prettier": "^4.0.0",

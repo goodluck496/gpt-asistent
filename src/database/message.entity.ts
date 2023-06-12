@@ -9,6 +9,9 @@ export class MessageEntity {
     @Column()
     gptAnswer: boolean;
 
+    @Column({ nullable: true })
+    askByVoice: boolean;
+
     @Column({ type: 'text' })
     text: string;
 

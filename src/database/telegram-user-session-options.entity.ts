@@ -4,6 +4,7 @@ import { TelegramUserSessionEntity } from './telegram-user-session-entity';
 export enum SessionOptionKeys {
     GPT_ENABLE = 'gpt-enable',
     GPT_SYSTEM_MSG = 'gpt-system-msg',
+    GPT_MODEL = 'gpt-model',
     VOICE_ENABLE = 'voice-enable',
     VOICE_SEX = 'voice-sex',
 }

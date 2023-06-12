@@ -8,17 +8,14 @@ import { Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { OpenAiService } from '../openai.module';
-import axios, { AxiosRequestConfig } from 'axios';
+//todo НЕ УДАЛЯТЬ, почему-то кривой экспорт в библиотеке
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { TextMessage } from 'typegram/message';
-import * as config from 'config';
 import { SessionsService } from '../session/sessions.service';
 import { SessionOptionKeys } from '../database/telegram-user-session-options.entity';
 import { bool } from '../helpers';
 import { VoiceService } from '../voice/voice.service';
-
-const VOICE_RSS_TOKEN: string = config.get('VOICE_RSS_TOKEN');
 
 export class TextMessageEvent implements IBaseEvent {
     event: Events.TEXT;
@@ -44,14 +41,19 @@ export class TextMessageEvent implements IBaseEvent {
 Команда '${ctx.message.text}' не зарегистрирована`);
                 return;
             }
-            ctx.sendChatAction('typing');
 
             const activeSession = await this.sessionService.getActiveSessionByChatId(ctx.message.chat.id);
+            if (!activeSession) {
+                void ctx.reply('Начните сессию командой /start');
+                return;
+            }
+
             const gptOption = activeSession.options.find((el) => el.key === SessionOptionKeys.GPT_ENABLE);
             const textToVoice = activeSession.options.find((el) => el.key === SessionOptionKeys.VOICE_ENABLE);
 
+            await ctx.sendChatAction('typing');
             if (gptOption && bool(gptOption.value)) {
-                ctx.reply('Жду ответа от GPT...');
+                await ctx.reply('Жду ответа от GPT...');
                 await this.sendToGpt({ ctx, text: ctx.message.text, session: activeSession });
             } else if (textToVoice) {
                 await this.reply(ctx, bool(textToVoice.value));
@@ -86,13 +88,12 @@ export class TextMessageEvent implements IBaseEvent {
             });
         }
 
-        // await ctx.reply(JSON.stringify(messageForSend, null, 4));
-
         const systemMsg = session.options.find((el) => el.key === SessionOptionKeys.GPT_SYSTEM_MSG);
         if (systemMsg && systemMsg.value) {
             messageForSend.push({ role: 'system', content: systemMsg.value });
         }
-        const aiMessage = await this.openAIService.createCompletion(messageForSend);
+        const aiMessage = await this.openAIService.createCompletion(session.id, messageForSend);
+
         await this.messageRepo.save([
             { id: null, session, text, gptAnswer: false },
             {
@@ -103,7 +104,37 @@ export class TextMessageEvent implements IBaseEvent {
             },
         ]);
 
-        await ctx.reply(aiMessage || 'Gpt не ответил');
+        const lengthStr = 2000;
+
+        const messageChunkCount = Math.ceil(aiMessage.length / lengthStr);
+        const chunks = [];
+        let index = 0;
+
+        while (chunks.length <= messageChunkCount) {
+            chunks.push(aiMessage.substring(index, lengthStr));
+            index += lengthStr;
+        }
+
+        void Promise.all(
+            chunks
+                .filter((el) => !!el)
+                .map(
+                    (el, i) =>
+                        new Promise((res, rej) => {
+                            setTimeout(async () => {
+                                try {
+                                    await ctx.replyWithHTML(el);
+                                    res(el);
+                                } catch (err) {
+                                    console.log('ERROR', err);
+                                    void ctx.reply('ОШИБКА...');
+                                }
+                            }, 100 * i);
+                        }),
+                ),
+        );
+
+        // await ctx.reply(aiMessage || 'Gpt не ответил');
     }
 
     async reply(ctx: Context<TextMessage>, voice: boolean): Promise<void> {
@@ -113,6 +144,7 @@ export class TextMessageEvent implements IBaseEvent {
             return;
         }
 
+        await ctx.sendChatAction('record_voice');
         const speech = await this.voiceService.textToSpeech(ctx.message.text);
         if (!speech) {
             console.log('Не получилось преобразовать фразу в голос');

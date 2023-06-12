@@ -1,6 +1,7 @@
 version: '3'
 services:
   web:
+    mem_limit: 2048m
     build: .
     ports:
       - "3000:3000"
@@ -8,7 +9,7 @@ services:
       - ./src:/usr/src/app/src
     depends_on:
       - db
-
+      - vosk-service
   db:
     restart: always
     image: postgres
@@ -20,3 +21,11 @@ services:
       - "5432:5432"
     volumes:
       - ./pgdata:/var/lib/postgresql/data
+  vosk-service:
+    mem_limit: 8192m
+    restart: always
+    image: alphacep/kaldi-ru:latest
+    ports:
+      - "2700:2700"
+    volumes:
+      - ./voskdata:/opt/samples

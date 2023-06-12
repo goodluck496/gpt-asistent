@@ -19,10 +19,10 @@ export class VoiceRssService implements IVoiceApiService {
 
     /**
      * @deprecated
-     * @param data
+     * @param filePath
      * У данного API отсутвует декодирование голоса в текст
      */
-    speechToText(data: Buffer): Promise<string> {
+    speechToText(filePath: string): Promise<string> {
         return Promise.resolve('');
     }
 

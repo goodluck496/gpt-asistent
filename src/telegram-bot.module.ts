@@ -16,6 +16,7 @@ import { BehaviorSubject, filter } from 'rxjs';
 import { SessionsModule } from './session/sessions.module';
 import { SessionsService } from './session/sessions.service';
 import { VoiceModule } from './voice/voice.module';
+import { FileSaveModule } from './file-save/file-save.module';
 
 const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');
 const botCommandTokens = Object.keys(BotCommands).filter((c) => c.endsWith('Command'));
@@ -88,6 +89,7 @@ export class TelegramBotService {
         OpenaiModule,
         SessionsModule,
         VoiceModule,
+        FileSaveModule,
         TypeOrmModule.forFeature([TelegramUserEntity, TelegramUserSessionEntity, MessageEntity]),
     ],
     controllers: [],
@@ -113,14 +115,6 @@ export class TelegramBotService {
                 return {
                     provide: event,
                     useClass: BotEvents[event],
-                    // useFactory: (tgBot: Telegraf, aiService: OpenAiService, session: SessionsService) => {
-                    //     //todo если допустить, что обработчик сообщений будет зареган раньше команд,
-                    //     // то команды работать не будут
-                    //     // https://ru.stackoverflow.com/questions/1256165/telegram-%D0%B1%D0%BE%D1%82-%D0%BD%D0%B5-%D1%80%D0%B5%D0%B0%D0%B3%D0%B8%D1%80%D1%83%D0%B5%D1%82-%D0%BD%D0%B0-%D0%BA%D0%BE%D0%BC%D0%B0%D0%BD%D0%B4%D1%8B-python-telebot
-                    //     // setTimeout(() => {
-                    //     return new BotEvents[event](tgBot, aiService, session);
-                    //     // }, 100);
-                    // },
                     inject: ['TELEGRAM_BOT', OpenAiService, SessionsService],
                 } as Provider;
             }),

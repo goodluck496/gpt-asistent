@@ -8,12 +8,14 @@ import { TelegramUserSessionEntity } from '../database/telegram-user-session-ent
 import { SessionsService } from '../session/sessions.service';
 import { SessionOptionKeys } from '../database/telegram-user-session-options.entity';
 import { BaseCommand } from './base.command';
+import { OpenAiModels } from '../openai.module';
 
 enum GPT_ACTION_ENUM {
     ENABLE = 'gpt-enable',
     DISABLE = 'gpt-disable',
     CONTEXT_HELP = 'context-help',
     SET_CONTEXT = 'set-context',
+    SET_GPT_MODEL = 'set-gpt-model',
 }
 
 export class GptChatCommand extends BaseCommand implements IBaseCommand {
@@ -25,7 +27,12 @@ export class GptChatCommand extends BaseCommand implements IBaseCommand {
     actions: KeyboardAction<GPT_ACTION_ENUM>[] = [
         { name: GPT_ACTION_ENUM.ENABLE, title: 'Включить', handler: (ctx) => this.enableGpt(ctx) },
         { name: GPT_ACTION_ENUM.DISABLE, title: 'Выключить', handler: (ctx) => this.disableGpt(ctx) },
-        { name: GPT_ACTION_ENUM.CONTEXT_HELP, title: 'Задать контекст', handler: (ctx) => this.contextHelp(ctx) },
+        {
+            name: GPT_ACTION_ENUM.SET_GPT_MODEL,
+            title: 'Модель асистента',
+            handler: (ctx) => this.setAsistentModel(ctx),
+        },
+        { name: GPT_ACTION_ENUM.CONTEXT_HELP, title: 'Контекст', handler: (ctx) => this.contextHelp(ctx) },
     ];
 
     constructor(
@@ -38,9 +45,13 @@ export class GptChatCommand extends BaseCommand implements IBaseCommand {
         super.registrationHandler();
     }
 
-    applyCommandWithArguments(ctx, action: string, commandAgs) {
+    applyCommandWithArguments(ctx, action: GPT_ACTION_ENUM, commandAgs) {
         if (action === GPT_ACTION_ENUM.SET_CONTEXT) {
             void this.setSystemMessage(ctx, commandAgs.join(' '));
+            return;
+        }
+        if (action === GPT_ACTION_ENUM.SET_GPT_MODEL) {
+            void this.setGptModel(ctx, commandAgs[0]);
             return;
         }
     }
@@ -75,8 +86,18 @@ export class GptChatCommand extends BaseCommand implements IBaseCommand {
         await this.sessionService.addAndUpdateOption(session.id, SessionOptionKeys.GPT_ENABLE, 'boolean', false);
     }
 
+    private setAsistentModel(ctx): void {
+        // ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+        ctx.replyWithHTML(`
+<b>Чтобы задать модель AI можно воспользоваться командой</b>
+<i>/gpt set-gpt-model "${Object.keys(OpenAiModels).join('|')}"</i>
+<i>Выберите одну модель и введите без кавычек.</i>
+        `);
+    }
+
     private contextHelp(ctx): void {
-        ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+        // ctx.deleteMessage(ctx.callbackQuery.message.message_id);
+
         ctx.replyWithHTML(`
 <b>Чтобы задать контекст общения с AI можно воспользоваться командой</b>
 <i>/gpt set-context "мой контекст, о котором будет знать помошник"</i>
@@ -86,7 +107,7 @@ export class GptChatCommand extends BaseCommand implements IBaseCommand {
 
     private async setSystemMessage(ctx, message?: string): Promise<void> {
         if (!message) {
-            ctx.reply('Вы не ввели системное сообдение для асистента');
+            ctx.reply('Вы не ввели системное сообщение для асистента');
             return;
         }
 
@@ -97,5 +118,21 @@ export class GptChatCommand extends BaseCommand implements IBaseCommand {
         }
 
         await this.sessionService.addAndUpdateOption(session.id, SessionOptionKeys.GPT_SYSTEM_MSG, 'string', message);
+    }
+
+    private async setGptModel(ctx, model: OpenAiModels): Promise<void> {
+        if (!model) {
+            ctx.reply('Вы не ввели модель асистента');
+            return;
+        }
+
+        const session = await this.sessionService.getActiveSessionByChatId(ctx.from.id);
+        if (!session) {
+            ctx.reply('Для начала нужно ввести команду /start');
+            return;
+        }
+
+        await this.sessionService.addAndUpdateOption(session.id, SessionOptionKeys.GPT_MODEL, 'string', OpenAiModels[model]);
+        ctx.reply(`Вы выбрали модель ${model}`);
     }
 }
