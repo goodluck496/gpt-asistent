@@ -1,14 +1,15 @@
 import { Telegraf } from 'telegraf';
 import { Commands, IBaseCommand, KeyboardAction } from './types';
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { TelegramUserEntity } from '../database/telegram-user.entity';
+import { TelegramUserEntity } from '../../database/telegram-user.entity';
 import { Repository } from 'typeorm';
-import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
-import { SessionsService } from '../session/sessions.service';
-import { SessionOptionKeys } from '../database/telegram-user-session-options.entity';
+import { TelegramUserSessionEntity } from '../../database/telegram-user-session-entity';
+import { SessionsService } from '../../session/sessions.service';
+import { SessionOptionKeys } from '../../database/telegram-user-session-options.entity';
 import { BaseCommand } from './base.command';
-import { OpenAiModels } from '../openai.module';
+import { OpenAiModels } from '../../openai.module';
+import { TELEGRAM_BOT_TOKEN } from '../../tokens';
 
 enum GPT_ACTION_ENUM {
     ENABLE = 'gpt-enable',
@@ -18,11 +19,13 @@ enum GPT_ACTION_ENUM {
     SET_GPT_MODEL = 'set-gpt-model',
 }
 
+@Injectable()
 export class GptChatCommand extends BaseCommand implements IBaseCommand {
     order = 3;
-    command = Commands.GPT_CHAT;
+    name = Commands.GPT_CHAT;
     defaultArg = 'enable';
     description = 'включает и отключает GPT помошника с помощью аргументов enable и disable';
+    commandFirst = false;
 
     actions: KeyboardAction<GPT_ACTION_ENUM>[] = [
         { name: GPT_ACTION_ENUM.ENABLE, title: 'Включить', handler: (ctx) => this.enableGpt(ctx) },
@@ -36,7 +39,7 @@ export class GptChatCommand extends BaseCommand implements IBaseCommand {
     ];
 
     constructor(
-        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
+        @Inject(TELEGRAM_BOT_TOKEN) public readonly bot: Telegraf,
         @InjectRepository(TelegramUserEntity) private readonly tgUsersRepo: Repository<TelegramUserEntity>,
         @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
         private readonly sessionService: SessionsService,
@@ -86,7 +89,7 @@ export class GptChatCommand extends BaseCommand implements IBaseCommand {
         await this.sessionService.addAndUpdateOption(session.id, SessionOptionKeys.GPT_ENABLE, 'boolean', false);
     }
 
-    private setAsistentModel(ctx): void {
+    private async setAsistentModel(ctx): Promise<void> {
         // ctx.deleteMessage(ctx.callbackQuery.message.message_id);
         ctx.replyWithHTML(`
 <b>Чтобы задать модель AI можно воспользоваться командой</b>
@@ -95,7 +98,7 @@ export class GptChatCommand extends BaseCommand implements IBaseCommand {
         `);
     }
 
-    private contextHelp(ctx): void {
+    private async contextHelp(ctx): Promise<void> {
         // ctx.deleteMessage(ctx.callbackQuery.message.message_id);
 
         ctx.replyWithHTML(`

@@ -1,20 +1,22 @@
 import { Commands } from './types';
 import { Telegraf } from 'telegraf';
 import * as moment from 'moment';
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MessageEntity } from '../database/message.entity';
+import { MessageEntity } from '../../database/message.entity';
 import { BaseCommand } from './base.command';
-import { SessionsService } from '../session/sessions.service';
+import { SessionsService } from '../../session/sessions.service';
+import { TELEGRAM_BOT_TOKEN } from '../../tokens';
 
+@Injectable()
 export class StateCommand extends BaseCommand {
     order = 2;
-    command = Commands.STATE;
+    name = Commands.STATE;
     description = 'возвращает краткий список параметров сессии';
 
     constructor(
-        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
+        @Inject(TELEGRAM_BOT_TOKEN) public readonly bot: Telegraf,
         private sessionService: SessionsService,
         @InjectRepository(MessageEntity) private readonly messageRepo: Repository<MessageEntity>,
     ) {
@@ -22,12 +24,8 @@ export class StateCommand extends BaseCommand {
         super.registrationHandler();
     }
 
-    async commandHandler(ctx) {
+    async commandHandler(from, ctx) {
         const activeSession = await this.sessionService.getActiveSessionByChatId(ctx.from.id);
-        if (!activeSession) {
-            ctx.reply('Для начала нужно начать сессию введя команду /start');
-            return;
-        }
 
         const messageCountInSession = await this.messageRepo.findAndCountBy({ sessionId: activeSession.id });
 

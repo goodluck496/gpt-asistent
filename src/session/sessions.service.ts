@@ -94,6 +94,22 @@ export class SessionsService {
         });
     }
 
+    async resetSession(tgUserId: number, userId: number): Promise<void> {
+        const session = await this.getActiveSessionByChatId(tgUserId);
+        if (session) {
+            void this.sessionRepo.update(session.id, { isActive: false });
+        }
+
+        await this.sessionRepo.save(
+            this.sessionRepo.create({
+                userId,
+                tgUserId: tgUserId,
+                chatId: tgUserId,
+                isActive: true,
+            }),
+        );
+    }
+
     private getValueType(value: unknown): SessionOptionTypes {
         const isValidDate = typeof value === 'string' && moment(value).isValid();
         if (isValidDate) {

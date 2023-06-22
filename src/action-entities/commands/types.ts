@@ -10,19 +10,21 @@ export enum Commands {
 }
 
 export interface IBaseCommand {
+    name: Commands;
     order: number;
-    command: Commands;
     defaultArg?: string;
     description: string;
     bot: Telegraf;
 
     actions?: KeyboardAction<unknown>[];
-
-    registrationHandler(): void;
 }
 
 export type KeyboardAction<EnumT> = {
     name: EnumT;
     title: string;
-    handler: (ctx) => void;
+    handler: (ctx) => Promise<void>;
+    /**
+     * вызвать ли обработчик команды после кнопки
+     */
+    callCommandHandlerAfterButton?: boolean;
 };

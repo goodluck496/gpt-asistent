@@ -23,26 +23,6 @@ export class VoiceLocalService implements IVoiceToTextService {
         return this.connections.find((el) => el.id === uuid);
     }
 
-    private regWebsocket(): Promise<WSConnection> {
-        const wsClient = new client();
-        return new Promise((res, rej) => {
-            wsClient.on('connectFailed', (err) => rej(err));
-
-            try {
-                const url = 'ws://vosk-service:2700';
-                const wsClient = new client();
-                wsClient.on('connect', (connection) => {
-                    const connectionUUID = uuid();
-                    const connectionObj: WSConnection = { id: connectionUUID, connection: connection };
-                    res(connectionObj);
-                });
-                wsClient.connect(url);
-            } catch (err) {
-                rej(err);
-            }
-        });
-    }
-
     speechToText(filePath: string): Promise<string> {
         return new Promise(async (res, rej) => {
             try {
@@ -53,6 +33,9 @@ export class VoiceLocalService implements IVoiceToTextService {
 
                         if ('text' in data) {
                             res(data.text);
+                            fs.unlink(filePath, () => {
+                                console.log(`Файл "${filePath}" удален`);
+                            });
                             console.log('Текст который удалось распознать:');
                             console.log(data.text);
                         }
@@ -112,6 +95,26 @@ export class VoiceLocalService implements IVoiceToTextService {
                     title: 'Произошла ошибка подключения к службе перевода голоса в текст',
                     error: err,
                 });
+            }
+        });
+    }
+
+    private regWebsocket(): Promise<WSConnection> {
+        const wsClient = new client();
+        return new Promise((res, rej) => {
+            wsClient.on('connectFailed', (err) => rej(err));
+
+            try {
+                const url = 'ws://vosk-service:2700';
+                const wsClient = new client();
+                wsClient.on('connect', (connection) => {
+                    const connectionUUID = uuid();
+                    const connectionObj: WSConnection = { id: connectionUUID, connection: connection };
+                    res(connectionObj);
+                });
+                wsClient.connect(url);
+            } catch (err) {
+                rej(err);
             }
         });
     }

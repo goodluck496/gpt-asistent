@@ -1,27 +1,31 @@
-import { Events, IBaseEvent } from './types';
+import { Events } from './types';
 import { message } from 'telegraf/filters';
 import { Context, Input, Telegraf } from 'telegraf';
-import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
+import { TelegramUserSessionEntity } from '../../database/telegram-user-session-entity';
 import { ChatCompletionRequestMessage, ChatCompletionRequestMessageRoleEnum } from 'openai';
-import { MessageEntity } from '../database/message.entity';
-import { Inject } from '@nestjs/common';
+import { MessageEntity } from '../../database/message.entity';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { OpenAiService } from '../openai.module';
+import { OpenAiService } from '../../openai.module';
 //todo НЕ УДАЛЯТЬ, почему-то кривой экспорт в библиотеке
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { TextMessage } from 'typegram/message';
-import { SessionsService } from '../session/sessions.service';
-import { SessionOptionKeys } from '../database/telegram-user-session-options.entity';
-import { bool } from '../helpers';
-import { VoiceService } from '../voice/voice.service';
+import { SessionsService } from '../../session/sessions.service';
+import { SessionOptionKeys } from '../../database/telegram-user-session-options.entity';
+import { bool } from '../../helpers';
+import { VoiceService } from '../../voice/voice.service';
+import { TELEGRAM_BOT_TOKEN } from '../../tokens';
+import { IBaseTelegramActionEntity, TELEGRAM_ACTION_TYPES } from '../../types';
 
-export class TextMessageEvent implements IBaseEvent {
-    event: Events.TEXT;
+@Injectable()
+export class TextMessageEvent implements IBaseTelegramActionEntity {
+    name = Events.TEXT;
+    type = TELEGRAM_ACTION_TYPES.EVENT;
 
     constructor(
-        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
+        @Inject(TELEGRAM_BOT_TOKEN) public readonly bot: Telegraf,
         @Inject(OpenAiService) public openAIService: OpenAiService,
         public sessionService: SessionsService,
         public voiceService: VoiceService,
@@ -34,7 +38,7 @@ export class TextMessageEvent implements IBaseEvent {
     }
 
     registrationHandler(): void {
-        this.bot.on(message('text'), async (ctx: Context<TextMessage>) => {
+        this.bot.on(message(this.name), async (ctx: Context<TextMessage>) => {
             if (ctx.message.text.startsWith('/')) {
                 console.log(`
 Это сообщения является командой, но небыло обработано. 
@@ -43,11 +47,6 @@ export class TextMessageEvent implements IBaseEvent {
             }
 
             const activeSession = await this.sessionService.getActiveSessionByChatId(ctx.message.chat.id);
-            if (!activeSession) {
-                void ctx.reply('Начните сессию командой /start');
-                return;
-            }
-
             const gptOption = activeSession.options.find((el) => el.key === SessionOptionKeys.GPT_ENABLE);
             const textToVoice = activeSession.options.find((el) => el.key === SessionOptionKeys.VOICE_ENABLE);
 
@@ -145,13 +144,43 @@ export class TextMessageEvent implements IBaseEvent {
         }
 
         await ctx.sendChatAction('record_voice');
-        const speech = await this.voiceService.textToSpeech(ctx.message.text);
-        if (!speech) {
-            console.log('Не получилось преобразовать фразу в голос');
-            void ctx.reply('Не удалось перевести текст в речь...');
-            return;
+        const text: string = ctx.message.text;
+
+        const chunkSize = 370;
+        const chunks = [];
+        if (text.length > chunkSize) {
+            const allWords = text.split(' ');
+            let tempChunk = [];
+            let iterator = 0;
+
+            for (const word of allWords) {
+                iterator++;
+                if (tempChunk.join(' ').length < chunkSize) {
+                    tempChunk.push(word + ' ');
+                    if (tempChunk.join(' ').length > chunkSize) {
+                        const deleteItem = tempChunk.pop();
+                        chunks.push([...tempChunk]);
+                        tempChunk = [deleteItem];
+                    } else if (iterator === allWords.length) {
+                        chunks.push([...tempChunk]);
+                        tempChunk = [];
+                    }
+                }
+            }
         }
 
-        void ctx.replyWithVoice(Input.fromBuffer(speech));
+        await Promise.all(
+            chunks.map(async (chunkText) => {
+                await ctx.sendChatAction('record_voice');
+                const speech = await this.voiceService.textToSpeech(chunkText);
+                if (!speech) {
+                    console.log('Не получилось преобразовать фразу в голос');
+                    await ctx.reply('Не удалось перевести текст в речь...');
+                    return;
+                }
+
+                void ctx.replyWithVoice(Input.fromBuffer(speech));
+            }),
+        );
     }
 }

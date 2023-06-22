@@ -1,19 +1,21 @@
 import { Telegraf } from 'telegraf';
 import { Commands } from './types';
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { TelegramUserSessionEntity } from '../database/telegram-user-session-entity';
+import { TelegramUserSessionEntity } from '../../database/telegram-user-session-entity';
 import { BaseCommand } from './base.command';
-import { SessionsService } from '../session/sessions.service';
+import { SessionsService } from '../../session/sessions.service';
+import { TELEGRAM_BOT_TOKEN } from '../../tokens';
 
+@Injectable()
 export class LeaveCommand extends BaseCommand {
     order = 1;
-    command = Commands.LEAVE;
+    name = Commands.LEAVE;
     description = 'завершает текущую сессию с ботом';
 
     constructor(
-        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
+        @Inject(TELEGRAM_BOT_TOKEN) public readonly bot: Telegraf,
         private sessionService: SessionsService,
         @InjectRepository(TelegramUserSessionEntity) private readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
     ) {
@@ -21,7 +23,7 @@ export class LeaveCommand extends BaseCommand {
         super.registrationHandler();
     }
 
-    async commandHandler(ctx) {
+    async commandHandler(from, ctx) {
         ctx.reply('Приходи еще! =)');
         if (ctx.chat.type !== 'private') {
             try {

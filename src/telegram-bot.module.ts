@@ -1,88 +1,38 @@
-import { Inject, Injectable, Logger, Module, Provider } from '@nestjs/common';
+import { Module, Provider, Type } from '@nestjs/common';
 import * as config from 'config';
 
 import { Telegraf } from 'telegraf';
-import { OpenaiModule, OpenAiService } from './openai.module';
-import { Repository } from 'typeorm';
+import { OpenaiModule } from './openai.module';
 import { TelegramUserEntity } from './database/telegram-user.entity';
-import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
-import * as BotCommands from './bot-commands';
-import { IBaseCommand } from './bot-commands';
-import * as BotEvents from './bot-events';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import * as BotCommands from './action-entities/commands';
+import * as BotEvents from './action-entities/events';
+import * as BotScenario from './action-entities/scenaries';
 import { TelegramUserSessionEntity } from './database/telegram-user-session-entity';
 import { MessageEntity } from './database/message.entity';
-import { ModuleRef } from '@nestjs/core';
-import { BehaviorSubject, filter } from 'rxjs';
 import { SessionsModule } from './session/sessions.module';
-import { SessionsService } from './session/sessions.service';
 import { VoiceModule } from './voice/voice.module';
 import { FileSaveModule } from './file-save/file-save.module';
+import { TELEGRAM_ACTION_ENTITY_TOKENS, TELEGRAM_BOT_TOKEN } from './tokens';
+import { TelegramBotService } from './telegram-bot.service';
 
 const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');
-const botCommandTokens = Object.keys(BotCommands).filter((c) => c.endsWith('Command'));
 
-@Injectable()
-export class TelegramBotService {
-    private readonly logger = new Logger(TelegramBotService.name);
+/**
+ * При добавлении сущностей с которыми работает telegram - добавить их в values()
+ */
+const telegramEntities = Object.values({ ...BotCommands, ...BotEvents, ...BotScenario }).filter((el) => el && 'name' in el);
 
-    constructor(
-        @Inject('TELEGRAM_BOT') public readonly bot: Telegraf,
-        @InjectRepository(TelegramUserEntity) public readonly tgUsersRepo: Repository<TelegramUserEntity>,
-        @InjectRepository(TelegramUserSessionEntity) public readonly tgUserSessionRepo: Repository<TelegramUserSessionEntity>,
-        @InjectRepository(MessageEntity) public readonly messageRepo: Repository<MessageEntity>,
-        private readonly moduleRef: ModuleRef,
-    ) {
-        this.run();
-        this.registerBotCommands();
-    }
-
-    run(): void {
-        this.logger.verbose('Run bot');
-
-        this.bot.command('test', (ctx) => {
-            console.log('test command', ctx.message.text);
-        });
-
-        void this.bot.launch();
-
-        this.tgUserSessionRepo.findBy({ isActive: true }).then((sessions) => {
-            const chatIds = Array.from(new Set(sessions.map((el) => el.chatId)));
-            chatIds.forEach((chatId) => {
-                // this.bot.telegram.sendMessage(Number(chatId), 'Привет!!! Я снова к вашим услугам', {
-                //     reply_markup: { remove_keyboard: true },
-                // });
-            });
-        });
-
-        process.once('SIGINT', () => this.bot.stop('SIGINT'));
-        process.once('SIGTERM', () => this.bot.stop('SIGTERM'));
-    }
-
-    registerBotCommands() {
-        const commandInstances: BehaviorSubject<IBaseCommand[]> = new BehaviorSubject([]);
-        /**
-         * Модули команд не успевают зарегистрироваться и некоторые из них будут undefined
-         * для того, чтобы избежать ошибок поставил таймаут
-         */
-        setTimeout(() => {
-            botCommandTokens.forEach(async (command) => {
-                const commandRef: IBaseCommand = await this.moduleRef.get(command);
-                this.logger.log(`command '${commandRef.command}' registered`);
-                commandInstances.next([...commandInstances.value, commandRef]);
-            });
-        }, 0);
-        commandInstances.pipe(filter((c) => c.length === botCommandTokens.length)).subscribe((commands) => {
-            void this.bot.telegram.setMyCommands(
-                commands
-                    .sort((a, b) => a.order - b.order)
-                    .map((el) => ({
-                        command: `${el.command.toLowerCase()}`,
-                        description: el.description.toLowerCase(),
-                    })),
-            );
-        });
-    }
-}
+const PROVIDERS: Provider[] = [
+    ...telegramEntities.map((el: Type) => ({
+        provide: el.name,
+        useClass: el,
+    })),
+    {
+        provide: TELEGRAM_ACTION_ENTITY_TOKENS,
+        useValue: telegramEntities,
+    },
+];
 
 @Module({
     imports: [
@@ -95,30 +45,14 @@ export class TelegramBotService {
     controllers: [],
     providers: [
         {
-            provide: 'TELEGRAM_BOT',
+            provide: TELEGRAM_BOT_TOKEN,
             useFactory: () => {
                 return new Telegraf(TELEGRAM_TOKEN, {});
             },
         },
         TelegramBotService,
-        ...botCommandTokens.map(
-            (command) =>
-                ({
-                    provide: command,
-                    useClass: BotCommands[command],
-                    inject: ['TELEGRAM_BOT'],
-                } as Provider),
-        ),
-        ...Object.keys(BotEvents)
-            .filter((e) => e.endsWith('Event'))
-            .map((event) => {
-                return {
-                    provide: event,
-                    useClass: BotEvents[event],
-                    inject: ['TELEGRAM_BOT', OpenAiService, SessionsService],
-                } as Provider;
-            }),
+        ...PROVIDERS,
     ],
-    exports: ['TELEGRAM_BOT'],
+    exports: [TELEGRAM_BOT_TOKEN, ...PROVIDERS],
 })
 export class TelegramBotModule {}
