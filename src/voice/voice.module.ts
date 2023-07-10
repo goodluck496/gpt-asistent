@@ -1,17 +1,18 @@
 import { Module } from '@nestjs/common';
-import { VOICE_API_SERVICE_TOKEN, VOICE_TO_TEXT_SERVICE_TOKEN } from './voice.const-and-types';
-import { VoiceRssService } from './voice-api-services/voice-rss.service';
+import { TEXT_TO_VOICE_SERVICE_TOKEN, VOICE_TO_TEXT_SERVICE_TOKEN } from './voice.const-and-types';
 import { VoiceService } from './voice.service';
-import { VoiceLocalService } from './voice-api-services/voice-local.service';
+import { VoskVoiceToTextService } from './voice-api-services/vosk.voice-to-text.service';
+import { PiperTextToVoiceService } from './voice-api-services/piper.text-to-voice.service';
 
 const providers = [
     {
-        provide: VOICE_API_SERVICE_TOKEN,
-        useClass: VoiceRssService,
+        provide: TEXT_TO_VOICE_SERVICE_TOKEN,
+        // useClass: VoiceRssService,
+        useClass: PiperTextToVoiceService,
     },
     {
         provide: VOICE_TO_TEXT_SERVICE_TOKEN,
-        useClass: VoiceLocalService,
+        useClass: VoskVoiceToTextService,
     },
     VoiceService,
 ];

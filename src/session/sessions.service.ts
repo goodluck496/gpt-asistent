@@ -82,8 +82,8 @@ export class SessionsService {
 
     getMessagesForSession(
         sessionId,
-        where: FindOptionsWhere<MessageEntity>,
-        order: FindOptionsOrder<MessageEntity>,
+        where: FindOptionsWhere<MessageEntity> = {},
+        order: FindOptionsOrder<MessageEntity> = {},
     ): Promise<MessageEntity[]> {
         return this.messageRepo.find({
             where: {

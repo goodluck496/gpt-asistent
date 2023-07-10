@@ -21,7 +21,7 @@ const TELEGRAM_TOKEN: string = config.get('TELEGRAM_BOT_TOKEN');
 /**
  * При добавлении сущностей с которыми работает telegram - добавить их в values()
  */
-const telegramEntities = Object.values({ ...BotCommands, ...BotEvents, ...BotScenario }).filter((el) => el && 'name' in el);
+const telegramEntities = Object.values({ ...BotCommands, ...BotScenario, ...BotEvents }).filter((el) => el && 'name' in el);
 
 const PROVIDERS: Provider[] = [
     ...telegramEntities.map((el: Type) => ({

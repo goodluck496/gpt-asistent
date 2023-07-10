@@ -12,9 +12,9 @@ import { FileSaveService } from '../../file-save/file-save.service';
 import { v4 as uuid } from 'uuid';
 import { Update } from 'typegram/update';
 import { TELEGRAM_BOT_TOKEN } from '../../tokens';
-import { ModuleRef } from '@nestjs/core';
 import { SCENARIO } from '../scenaries/types';
 import { IBaseTelegramActionEntity, TELEGRAM_ACTION_TYPES } from '../../types';
+import * as fs from 'fs';
 
 @Injectable()
 export class VoiceMessageEvent implements IBaseTelegramActionEntity {
@@ -27,10 +27,10 @@ export class VoiceMessageEvent implements IBaseTelegramActionEntity {
         public sessionService: SessionsService,
         public voiceService: VoiceService,
         public fileSaverService: FileSaveService,
-        private readonly moduleRef: ModuleRef,
         @InjectRepository(MessageEntity) public readonly messageRepo: Repository<MessageEntity>,
     ) {
         setTimeout(() => {
+            // команды должны быть зареганы ботом раньше евентов, для этого у последних ставим таймаут
             this.registrationHandler();
             this.handlerActions();
         }, 1000);
@@ -43,15 +43,14 @@ export class VoiceMessageEvent implements IBaseTelegramActionEntity {
             const fileExtension = fileLink.pathname.split('.').pop();
             const filePath = await this.fileSaverService.saveByLink(fileLink.href, `${uuid()}_voice.${fileExtension}`);
 
+            await ctx.reply('Подождите...');
+            await ctx.sendChatAction('typing');
+
             try {
-                await ctx.reply('Подождите...');
-                await ctx.sendChatAction('typing');
                 const session = await this.sessionService.getActiveSessionByChatId(ctx.message.from.id);
-                if (!session) {
-                    ctx.reply('Сначала начтине сессию командой /start');
-                    return;
-                }
                 const res = await this.voiceService.speechToText(filePath);
+                fs.unlink(filePath, () => void 0);
+
                 await ctx.reply(`Вы сказали - "${res}"`);
 
                 await this.sessionService.saveMessages(session.id, [
@@ -78,7 +77,7 @@ export class VoiceMessageEvent implements IBaseTelegramActionEntity {
                 ctx.reply(
                     JSON.stringify(
                         {
-                            message: 'Ошибка распознования',
+                            message: 'Ошибка распознавания',
                             error: err,
                         },
                         null,

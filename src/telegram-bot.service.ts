@@ -8,7 +8,7 @@ import { TelegramUserSessionEntity } from './database/telegram-user-session-enti
 import { MessageEntity } from './database/message.entity';
 import { ModuleRef } from '@nestjs/core';
 import { SessionsService } from './session/sessions.service';
-import { BehaviorSubject } from 'rxjs';
+import { Subject } from 'rxjs';
 import { Commands, IBaseCommand } from './action-entities/commands';
 import { Update } from 'typegram';
 import { IBaseTelegramActionEntity, TELEGRAM_ACTION_TYPES } from './types';
@@ -56,10 +56,10 @@ export class TelegramBotService {
     }
 
     registerBotActions() {
-        const commandInstances: BehaviorSubject<IBaseCommand[]> = new BehaviorSubject([]);
+        const commandInstances: Subject<IBaseCommand[]> = new Subject();
         /**
          * Модули команд не успевают зарегистрироваться и некоторые из них будут undefined
-         * для того, чтобы избежать ошибок поставил таймаут
+         * для того, чтобы избежать ошибок, поставил таймаут
          */
         setTimeout(async () => {
             const commands = [];
@@ -75,20 +75,18 @@ export class TelegramBotService {
                 }),
             );
             commandInstances.next(commands);
-        }, 0);
-        commandInstances.subscribe((commands) => {
-            this.bot.telegram
-                .setMyCommands(
-                    commands
-                        .sort((a, b) => a.order - b.order)
-                        .map((el) => ({
-                            command: `${el.name.toLowerCase()}`,
-                            description: el.description.toLowerCase(),
-                        })),
-                )
-                .then((v) => {
-                    console.log('set commands', v);
-                });
+        }, 1000);
+        commandInstances.subscribe(async (commands) => {
+            // await this.bot.telegram.deleteMyCommands();
+            // return;
+            void this.bot.telegram.setMyCommands(
+                commands
+                    .sort((a, b) => a.order - b.order)
+                    .map((el) => ({
+                        command: el.name.toLowerCase(),
+                        description: el.description.toLowerCase(),
+                    })),
+            );
         });
     }
 

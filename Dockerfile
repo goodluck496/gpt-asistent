@@ -4,15 +4,15 @@ FROM node:18
 # Создаем директорию приложения
 WORKDIR /usr/src/app
 
+#ffmpeg для работы с голосом
+RUN apt update
+RUN apt install -y ffmpeg
+
 # Копируем зависимости приложения в образ
 COPY *.json ./
 
 # Устанавливаем зависимости
 RUN npm ci
-
-#ffmpeg для работы с голосом
-RUN apt update
-RUN apt install -y ffmpeg
 
 # Копируем остальные файлы приложения в образ
 COPY ./src ./src

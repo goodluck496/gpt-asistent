@@ -1,6 +1,6 @@
 version: '3'
 services:
-  web:
+  asistent:
     mem_limit: 2048m
     build: .
     ports:
@@ -9,7 +9,8 @@ services:
       - ./src:/usr/src/app/src
     depends_on:
       - db
-      - vosk-service
+      - vtt-vosk-service
+      - tts-piper-service
   db:
     restart: always
     image: postgres
@@ -21,7 +22,7 @@ services:
       - "5432:5432"
     volumes:
       - ./pgdata:/var/lib/postgresql/data
-  vosk-service:
+  vtt-vosk-service:
     mem_limit: 8192m
     restart: always
     image: alphacep/kaldi-ru:latest
@@ -29,3 +30,14 @@ services:
       - "2700:2700"
     volumes:
       - ./voskdata:/opt/samples
+  tts-piper-service:
+    mem_limit: 4096m
+    restart: always
+    build:
+      context: .
+      dockerfile: piper.Dockerfile
+    ports:
+      - "5002:5002"
+    volumes:
+      - ./piper/src/piper-server:/usr/src/piper/src/piper-server
+      - ./piper/models:/usr/src/piper/models

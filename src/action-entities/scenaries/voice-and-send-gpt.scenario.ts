@@ -30,7 +30,7 @@ export class VoiceAndSendGptScenario implements IBaseTelegramActionEntity {
             const session = await this.sessionService.getActiveSessionByChatId(ctx.from.id);
             const messages = await this.sessionService.getMessagesForSession(
                 session.id,
-                { gptAnswer: false, askByVoice: true },
+                { askByVoice: true },
                 { id: { direction: 'ASC' } },
             );
             if (!messages.length) {

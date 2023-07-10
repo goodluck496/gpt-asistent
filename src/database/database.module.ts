@@ -1,9 +1,16 @@
 import { DynamicModule, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import * as config from 'config';
+
+const DB_HOST: string = config.get('DATABASE_HOST');
+const DB_PORT = Number(config.get('DATABASE_PORT'));
+const DB_NAME: string = config.get('DATABASE_DB_NAME');
+const DB_USER_NAME: string = config.get('DATABASE_USER_NAME');
+const DB_USER_PASS: string = config.get('DATABASE_USER_PASS');
+
 @Module({
     imports: [],
-    // exports: [TypeOrmModule.forFeature([TelegramUser])],
 })
 export class DatabaseModule {
     static forRoot(): DynamicModule {
@@ -12,12 +19,11 @@ export class DatabaseModule {
             imports: [
                 TypeOrmModule.forRoot({
                     type: 'postgres',
-                    // host: 'db',
-                    host: 'localhost',
-                    port: 5432,
-                    username: 'postgres',
-                    password: 'example',
-                    database: 'mydb',
+                    host: DB_HOST,
+                    port: DB_PORT,
+                    username: DB_USER_NAME,
+                    password: DB_USER_PASS,
+                    database: DB_NAME,
                     entities: [__dirname + '/../**/*.entity{.ts,.js}'],
                     synchronize: true,
                     autoLoadEntities: true,
