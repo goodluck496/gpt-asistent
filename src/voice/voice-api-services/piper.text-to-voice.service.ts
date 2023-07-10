@@ -1,19 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import { IVoiceApiService } from '../voice.const-and-types';
+import { ITextToVoiceParams, ITextToVoiceService, IVoiceModel } from '../voice.const-and-types';
 import axios, { AxiosRequestConfig } from 'axios';
 
+interface IPaperTTSRequestPayload {
+    text: string;
+    modelName: string;
+}
+
 @Injectable()
-export class PiperTextToVoiceService implements IVoiceApiService {
+export class PiperTextToVoiceService implements ITextToVoiceService {
     API_URL = 'http://tts-piper-service:5002';
 
-    async textToSpeech(text: string): Promise<Buffer | undefined> {
-        const options: AxiosRequestConfig = {
+    public async getModels(): Promise<IVoiceModel[]> {
+        const response = await axios.get(`${this.API_URL}/api/tts/models`);
+
+        return response.data;
+    }
+
+    async textToSpeech(text: string, params: Partial<ITextToVoiceParams>): Promise<Buffer | undefined> {
+        const options: AxiosRequestConfig<IPaperTTSRequestPayload> = {
             method: 'POST',
             url: this.API_URL + '/api/tts',
             responseType: 'arraybuffer',
             data: {
                 text,
-                modelName: 'voice-ru-denis-medium',
+                modelName: params.model,
             },
         };
 

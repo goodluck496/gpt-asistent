@@ -4,7 +4,9 @@
         "quality": "medium"
     },
     "espeak": {
-        "voice": "ru"
+        "voice": "ru",
+        "name": "Денис",
+        "sex": "male"
     },
     "inference": {
         "noise_scale": 0.667,

@@ -3,11 +3,13 @@
         "sample_rate": 22050
     },
     "espeak": {
-        "voice": "ru"
+        "voice": "ru",
+        "name": "Ирина",
+        "sex": "female"
     },
     "inference": {
         "noise_scale": 0.667,
-        "length_scale": 1.3,
+        "length_scale": 1,
         "noise_w": 0.8
     },
     "phoneme_map": {},

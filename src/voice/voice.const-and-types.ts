@@ -4,8 +4,22 @@ export interface IVoiceToTextService {
     speechToText(filePath: string): Promise<string>;
 }
 
-export interface IVoiceApiService {
-    textToSpeech(text: string): Promise<Buffer | undefined>;
+export interface ITextToVoiceParams {
+    model: string;
+    speed: number;
+}
+
+export interface IVoiceModel {
+    voice: string;
+    name: string;
+    sex: 'male' | 'female';
+    modelName: string;
+}
+
+export interface ITextToVoiceService {
+    getModels(): Promise<IVoiceModel[]>;
+
+    textToSpeech(text: string, params: Partial<ITextToVoiceParams>): Promise<Buffer | undefined>;
 }
 
 export const TEXT_TO_VOICE_SERVICE_TOKEN = 'TEXT_TO_VOICE_SERVICE_TOKEN';

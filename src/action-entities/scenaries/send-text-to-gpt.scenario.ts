@@ -99,6 +99,7 @@ export class SendTextToGptScenario implements IBaseTelegramActionEntity {
                     } catch (err) {
                         console.log('ERROR', err);
                         void ctx.reply('ОШИБКА...');
+                        rej(err);
                     }
                 }, 100 * indexForSend++);
             });

@@ -1,6 +1,7 @@
 const express = require('express');
 const { exec } = require('child_process');
 const fs = require('fs');
+const { promisify } = require('util');
 const path = require('path');
 const bodyParser = require('body-parser');
 
@@ -12,10 +13,29 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 app.use(bodyParser.json());
 
-app.get('/api/tts/models', (req, res) => {
-    fs.readdir('/usr/src/piper/models', (err, data) => {
-        res.send(data);
-    });
+app.get('/api/tts/models', async (req, res) => {
+    const modelsPath = '/usr/src/piper/models';
+    const readDir = promisify(fs.readdir);
+    const readFile = promisify(fs.readFile);
+    const dir = await readDir(modelsPath);
+
+    const response = [];
+    for (const modelName of dir) {
+        const files = await readDir(path.resolve(modelsPath, modelName));
+        const modelParamsFile = files.find((el) => el.endsWith('json'));
+        console.log('modelParamsFile', modelParamsFile);
+        const modelParams = await readFile(path.resolve(modelsPath, modelName, modelParamsFile)).then((data) =>
+            JSON.parse(data.toString('utf8')),
+        );
+        if ('espeak' in modelParams) {
+            response.push({
+                ...modelParams.espeak,
+                modelName,
+            });
+        }
+    }
+
+    res.send(response);
 });
 
 app.post('/api/tts', async (req, res) => {
@@ -25,16 +45,7 @@ app.post('/api/tts', async (req, res) => {
         return res.status(400).send('Не указана модель распознавания');
     }
 
-    const fsReadDir = (path) =>
-        new Promise((res, rej) =>
-            fs.readdir(path, (err, data) => {
-                if (err) {
-                    rej(err);
-                    return;
-                }
-                res(data);
-            }),
-        );
+    const fsReadDir = promisify(fs.readdir);
 
     const fileName = `tmp-file-${+new Date()}-${Math.floor(Math.random() * 10000)}.wav`;
     const dirData = await fsReadDir(MODELS_PATH + modelName);

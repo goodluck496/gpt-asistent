@@ -7,6 +7,7 @@ export enum SessionOptionKeys {
     GPT_MODEL = 'gpt-model',
     VOICE_ENABLE = 'voice-enable',
     VOICE_SEX = 'voice-sex',
+    VOICE_SEX_MODEL = 'voice-sex-model',
 }
 
 export type SessionOptionTypes = 'string' | 'number' | 'boolean' | 'date' | 'object' | string;

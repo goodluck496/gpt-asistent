@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { IVoiceApiService } from '../voice.const-and-types';
+import { ITextToVoiceService } from '../voice.const-and-types';
 import axios, { AxiosRequestConfig } from 'axios';
 import * as config from 'config';
 
 const VOICE_RSS_TOKEN: string = config.get('VOICE_RSS_TOKEN');
 
 @Injectable()
-export class VoiceRssTextToVoiceService implements IVoiceApiService {
+export class VoiceRssTextToVoiceService implements ITextToVoiceService {
     config: any = {
         LANGUAGE: 'ru-ru',
         FILE_EXT: 'MP3',
@@ -34,8 +34,6 @@ export class VoiceRssTextToVoiceService implements IVoiceApiService {
             console.error('error', error);
             return undefined;
         }
-
-        return Promise.resolve(undefined);
     }
 
     getParamsForSend(text: string): URLSearchParams {

@@ -16,13 +16,14 @@ export interface IBaseCommand {
     description: string;
     bot: Telegraf;
 
-    actions?: KeyboardAction<unknown>[];
+    actions?: KeyboardAction<string>[];
 }
 
-export type KeyboardAction<EnumT> = {
+export type KeyboardAction<EnumT extends string> = {
     name: EnumT;
     title: string;
     handler: (ctx) => Promise<void>;
+    subActions?: KeyboardAction<EnumT>[];
     /**
      * вызвать ли обработчик команды после кнопки
      */

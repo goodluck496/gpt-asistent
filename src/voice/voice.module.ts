@@ -3,6 +3,7 @@ import { TEXT_TO_VOICE_SERVICE_TOKEN, VOICE_TO_TEXT_SERVICE_TOKEN } from './voic
 import { VoiceService } from './voice.service';
 import { VoskVoiceToTextService } from './voice-api-services/vosk.voice-to-text.service';
 import { PiperTextToVoiceService } from './voice-api-services/piper.text-to-voice.service';
+import { SessionsModule } from '../session/sessions.module';
 
 const providers = [
     {
@@ -18,6 +19,7 @@ const providers = [
 ];
 
 @Module({
+    imports: [SessionsModule],
     providers: [...providers],
     exports: [...providers],
 })

@@ -15,8 +15,7 @@ import { SessionOptionKeys } from '../../database/telegram-user-session-options.
 import { bool } from '../../helpers';
 import { TELEGRAM_BOT_TOKEN } from '../../tokens';
 import { IBaseTelegramActionEntity, TELEGRAM_ACTION_TYPES } from '../../types';
-import { SendTextToGptScenario } from '../scenaries/send-text-to-gpt.scenario';
-import { SendVoiceFromTextScenario } from '../scenaries/send-voice-from-text.scnerio';
+import { SendTextToGptScenario, SendVoiceFromTextScenario } from '../scenaries';
 
 @Injectable()
 export class TextMessageEvent implements IBaseTelegramActionEntity {

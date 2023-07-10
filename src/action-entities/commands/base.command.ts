@@ -24,23 +24,34 @@ export class BaseCommand implements IBaseCommand, IBaseTelegramActionEntity {
      */
     actions: KeyboardAction<string>[] = [];
 
-    registrationHandler(): void {
-        this.actions.forEach((el) => {
+    registrationActions(actions: KeyboardAction<string>[]) {
+        actions.forEach((el) => {
             if (typeof el.handler !== 'function') {
                 console.log(`Отсутсвует обработчик для действия '${el.name}' в команде '${this.name}'`);
                 return;
             }
+
             this.bot.action(el.name, async (ctx: Context<Update.CallbackQueryUpdate>) => {
                 if (this.deleteActionMessage) {
                     await ctx.deleteMessage(ctx.callbackQuery.message.message_id);
                 }
 
                 await el.handler(ctx);
+
+                if (el.subActions?.length) {
+                    this.registrationActions(el.subActions);
+                    void this.applyActions(ctx, el.subActions);
+                }
+
                 if (el.callCommandHandlerAfterButton) {
                     this.commandHandler('action', ctx);
                 }
             });
         });
+    }
+
+    registrationHandler(): void {
+        this.registrationActions(this.actions);
 
         this.bot.command(this.name, async (ctx: NarrowedContext<Context, any>) => {
             const commandArguments = getCommandArguments(ctx.message.text);
@@ -62,11 +73,11 @@ export class BaseCommand implements IBaseCommand, IBaseTelegramActionEntity {
         });
     }
 
-    async applyActions(ctx: Context<Update>): Promise<void> {
+    async applyActions(ctx: Context<Update> | Context<Update.CallbackQueryUpdate>, actions = this.actions): Promise<void> {
         await ctx.reply('Выбери команду', {
             reply_markup: {
                 inline_keyboard: [
-                    this.actions.map(
+                    actions.map(
                         (el) =>
                             ({
                                 text: el.title,
