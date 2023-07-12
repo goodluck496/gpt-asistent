@@ -23,7 +23,7 @@ services:
     volumes:
       - ./pgdata:/var/lib/postgresql/data
   vtt-vosk-service:
-    mem_limit: 8192m
+    mem_limit: 5120m
     restart: always
     image: alphacep/kaldi-ru:latest
     ports:
@@ -31,7 +31,7 @@ services:
     volumes:
       - ./voskdata:/opt/samples
   tts-piper-service:
-    mem_limit: 4096m
+    mem_limit: 2048m
     restart: always
     build:
       context: .
