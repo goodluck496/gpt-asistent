@@ -74,7 +74,9 @@ export class SendTextToGptScenario implements IBaseTelegramActionEntity {
             },
         ]);
 
-        void this.sendByChunks(ctx, aiMessage);
+        void this.sendByChunks(ctx, aiMessage).catch((err) => {
+            ctx.reply(JSON.stringify(err, null, 4));
+        });
     }
 
     async sendByChunks(ctx, message: string): Promise<void> {
@@ -94,7 +96,7 @@ export class SendTextToGptScenario implements IBaseTelegramActionEntity {
             await new Promise((res, rej) => {
                 setTimeout(async () => {
                     try {
-                        await ctx.replyWithHTML(chunk, { parse_mode: 'HTML' });
+                        await ctx.reply(chunk);
                         res(chunk);
                     } catch (err) {
                         console.log('ERROR', err);

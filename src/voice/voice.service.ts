@@ -38,6 +38,60 @@ export class VoiceService {
     }
 
     async speechToText(filePath?: string): Promise<string> {
-        return this.vttService.speechToText(filePath);
+        return this.vttService.speechToText(filePath).then((res) => this.postProcessText(res));
+    }
+
+    postProcessText(text: string): string {
+        const punctuationMap: Record<string, string> = {
+            'запятая': ', ',
+            'двоеточие': ': ',
+            'точка': '. ',
+            'точка с запятой': '; ',
+            'кавычка|кавычки': "'",
+            'апостроф': '`',
+            'двойная кавычка': '"',
+            'правая скобка': ') ',
+            'левая скобка': ' (',
+            'знак минус': ' - ',
+            'знак плюс': ' + ',
+            'знак равно': ' = ',
+            'знак звездочка': ' * ',
+            'знак разделить': ' / ',
+            'знак собачка': '@',
+            'восклицательный знак|знак восклицания': '! ',
+            'знак процент': '% ',
+            'знак вопроса|вопросительный знак': '? ',
+            'амперсанд': '&',
+            'правый слэш': ' / ',
+            'левый слэш': ' \\ ',
+            'вертикальный слэш': ' | ',
+        };
+
+        const digitMap: Record<string, string> = {
+            'ноль': '0',
+            'один|адин': '1',
+            'два': '2',
+            'три': '3',
+            'четыре': '4',
+            'пять': '5',
+            'шесть': '6',
+            'семь': '7',
+            'восемь': '8',
+            'девять': '9',
+            'десять': '10',
+        };
+        Object.keys({ ...punctuationMap, ...digitMap }).forEach((el) => {
+            let regexp = new RegExp(`( ${el} )+`, 'gi');
+            let foundReplaceEl = punctuationMap[el];
+
+            if (!foundReplaceEl) {
+                regexp = new RegExp(`(${el})+`, 'gi');
+                foundReplaceEl = digitMap[el];
+            }
+
+            text = text.replace(regexp, foundReplaceEl);
+        });
+
+        return text;
     }
 }
