@@ -25,10 +25,14 @@ export class VoiceService {
     async textToSpeech(text: string, sessionId: number): Promise<Buffer> {
         const options = await this.session.getSessionOptions(sessionId);
 
-        let { value: model } = options.find((op) => op.key === SessionOptionKeys.VOICE_SEX_MODEL);
-        if (!model) {
+        const option = options.find((op) => op.key === SessionOptionKeys.VOICE_SEX_MODEL);
+        let model = '';
+        if (!option) {
             model = await this.getModels().then((data) => data[0].modelName);
+        } else {
+            model = option.value;
         }
+
         const params: Partial<ITextToVoiceParams> = {
             model: model,
             speed: 1,
@@ -38,7 +42,9 @@ export class VoiceService {
     }
 
     async speechToText(filePath?: string): Promise<string> {
-        return this.vttService.speechToText(filePath).then((res) => this.postProcessText(res));
+        const text = await this.vttService.speechToText(filePath);
+        console.log(`распознали текст - '${text}'`);
+        return this.postProcessText(text);
     }
 
     postProcessText(text: string): string {
