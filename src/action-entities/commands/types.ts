@@ -7,6 +7,7 @@ export enum Commands {
     STATE = 'state',
     VOICE = 'voice',
     HELP = 'help',
+    POWER_CUTS_INFO = 'power_cuts_info',
 }
 
 export interface IBaseCommand {

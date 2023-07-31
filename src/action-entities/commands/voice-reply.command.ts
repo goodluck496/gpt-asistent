@@ -117,6 +117,6 @@ export class VoiceReplyCommand extends BaseCommand implements IBaseCommand {
         );
 
         this.registrationActions(actions);
-        void this.applyActions(ctx, actions);
+        void this.applyActions(ctx, 'Выбери модель', actions);
     }
 }

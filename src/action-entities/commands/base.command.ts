@@ -40,7 +40,7 @@ export class BaseCommand implements IBaseCommand, IBaseTelegramActionEntity {
 
                 if (el.subActions?.length) {
                     this.registrationActions(el.subActions);
-                    void this.applyActions(ctx, el.subActions);
+                    void this.applyActions(ctx, undefined, el.subActions);
                 }
 
                 if (el.callCommandHandlerAfterButton) {
@@ -73,8 +73,12 @@ export class BaseCommand implements IBaseCommand, IBaseTelegramActionEntity {
         });
     }
 
-    async applyActions(ctx: Context<Update> | Context<Update.CallbackQueryUpdate>, actions = this.actions): Promise<void> {
-        await ctx.reply('Выбери команду', {
+    async applyActions(
+        ctx: Context<Update> | Context<Update.CallbackQueryUpdate>,
+        replyText = 'Выбери команду',
+        actions = this.actions,
+    ): Promise<void> {
+        await ctx.reply(replyText, {
             reply_markup: {
                 inline_keyboard: [
                     actions.map(
