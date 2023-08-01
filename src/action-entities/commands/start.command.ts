@@ -39,6 +39,10 @@ export class StartCommand extends BaseCommand {
     async commandHandler(from, ctx) {
         const user = await this.tgUsersRepo.findOneBy({ telegramUserId: ctx.from.id });
 
+        if(!user) {
+            return this.forNewUser(ctx);
+        }
+
         const activeSessions = await this.tgUserSessionRepo.findBy({ userId: user.id, isActive: true });
         if (activeSessions.length) {
             void this.applyActions(ctx);
