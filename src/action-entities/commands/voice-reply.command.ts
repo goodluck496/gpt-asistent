@@ -37,7 +37,7 @@ export class VoiceReplyCommand extends BaseCommand implements IBaseCommand {
         {
             name: VOICE_ACTION_ENUM.SET_SEX_VOICE,
             title: 'Указать пол диктора',
-            handler: (ctx) => this.showCurrentVoiceSex(ctx),
+            handler: (ctx) => this.setCurrentVoiceSex(ctx),
         },
     ];
 
@@ -97,14 +97,7 @@ export class VoiceReplyCommand extends BaseCommand implements IBaseCommand {
         return this.bot.telegram.deleteMessage(ctx.chat.id, ctx.message.id).then(void 0);
     }
 
-    private async showCurrentVoiceSex(ctx): Promise<void> {
-        const session = await this.sessionService.getActiveSessionByChatId(ctx.from.id);
-        const currentSex = session.options.find((el) => el.key === SessionOptionKeys.VOICE_SEX);
-
-        if (!currentSex) {
-            return void 0;
-        }
-
+    private async setCurrentVoiceSex(ctx): Promise<void> {
         const actions: KeyboardAction<VOICE_ACTION_ENUM>[] = await this.voiceService.getModels().then((data) =>
             data.map(
                 (el) =>
