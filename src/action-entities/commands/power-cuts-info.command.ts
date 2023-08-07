@@ -48,34 +48,21 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
     async commandHandler(from: 'action' | 'command', ctx: Context<Update> | Context<Update.CallbackQueryUpdate>) {
         try {
             const pageUrls = await this.getPageUrls();
-            const currentDate = pageUrls.find(([date, url]) => {
-                return moment().isBetween(moment(date).hours(0).minute(0), moment(date).hours(23).minute(59));
+            pageUrls.sort((a, b) => moment(b[0]).unix() - moment(a[0]).unix());
+
+            const actions: KeyboardAction<string>[] = pageUrls.map(([date, url], index) => {
+                const dateFormatted = moment(date).format('DD.MM.Y');
+                const title = dateFormatted === moment().format('DD.MM.Y') ? 'Сегодня' : dateFormatted;
+
+                return {
+                    name: `select-date-${index}`,
+                    handler: (ctx) => this.selectDate(ctx, url),
+                    title,
+                };
             });
 
-            if (!currentDate) {
-                return ctx.reply('Текущей даты нет в списке тех.обслуживания');
-            }
-
-            const table = await this.parseOutageTable(currentDate[1]);
-            const regions = table.map((el) => el.region);
-            const actions: KeyboardAction<string>[] = regions.map((el, index) => ({
-                name: `select-region-${index + 1}`,
-                title: `${index + 1}`,
-                handler: (ctx) => this.selectRegion(ctx, table, el),
-            }));
-            const replyMessage = 'Выбери регион: \r\n' + regions.map((el, index) => `[${index + 1}] - ${el} \r\n`).join('');
-
-            const actionChunks = 7;
-            if (actions.length > actionChunks) {
-                this.registrationActions(actions.slice(0, actionChunks - 1));
-                this.registrationActions(actions.slice(actionChunks, actions.length));
-
-                await this.applyActions(ctx, replyMessage, actions.slice(0, actionChunks - 1));
-                await this.applyActions(ctx, 'Еще варианты', actions.slice(actionChunks, actions.length));
-            } else {
-                this.registrationActions(actions);
-                await this.applyActions(ctx, replyMessage, actions);
-            }
+            this.registrationActions(actions.slice(0, 2));
+            await this.applyActions(ctx, 'Выберите дату', actions.slice(0, 2));
         } catch (err) {
             console.log('error', err);
         }
@@ -232,5 +219,28 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
                     .map((el) => `${el.name}\r\n\r\n Будут проводиться работы: ${el.description}`)
                     .join('\r\n------------------------\r\n'),
         );
+    }
+
+    async selectDate(ctx: Context<Update.CallbackQueryUpdate>, url: string): Promise<void> {
+        const table = await this.parseOutageTable(url);
+        const regions = table.map((el) => el.region);
+        const actions = regions.map((el, index) => ({
+            name: `select-region-${index + 1}`,
+            title: `${index + 1}`,
+            handler: (ctx) => this.selectRegion(ctx, table, el),
+        }));
+        const replyMessage = 'Выбери регион: \r\n' + regions.map((el, index) => `[${index + 1}] - ${el} \r\n`).join('');
+
+        const actionChunks = 7;
+        if (actions.length > actionChunks) {
+            this.registrationActions(actions.slice(0, actionChunks - 1));
+            this.registrationActions(actions.slice(actionChunks, actions.length));
+
+            await this.applyActions(ctx, replyMessage, actions.slice(0, actionChunks - 1));
+            await this.applyActions(ctx, 'Еще варианты', actions.slice(actionChunks, actions.length));
+        } else {
+            this.registrationActions(actions);
+            await this.applyActions(ctx, replyMessage, actions);
+        }
     }
 }
