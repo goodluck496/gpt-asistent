@@ -58,7 +58,7 @@ export class StartCommand extends BaseCommand {
 
     async forNewUser(ctx: Context): Promise<void> {
         const newUser: TelegramUserEntity = this.tgUsersRepo.create({
-            name: ctx.from.username,
+            name: ctx.from.username || 'username_' + ctx.from.id,
             telegramUserId: ctx.from.id,
             id: null,
             firstName: ctx.from.first_name,
