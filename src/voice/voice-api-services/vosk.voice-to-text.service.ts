@@ -102,15 +102,17 @@ export class VoskVoiceToTextService implements IVoiceToTextService {
     }
 
     private regWebsocket(): Promise<WSConnection> {
-        const wsClient = new client();
         return new Promise((res, rej) => {
-            wsClient.on('connectFailed', (err) => rej(err));
-
             try {
                 const wsClient = new client();
+                console.log('start conn to ws');
+                
+                wsClient.on('connectFailed', (err) => rej(err));
                 wsClient.on('connect', (connection) => {
                     const connectionUUID = uuid();
                     const connectionObj: WSConnection = { id: connectionUUID, connection: connection };
+                    console.log('connect to vtt');
+                    
                     res(connectionObj);
                 });
                 wsClient.connect(this.WS_URL);

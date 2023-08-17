@@ -30,7 +30,7 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
     name = Commands.POWER_CUTS_INFO;
     description = 'информация об отключениях электроэнергии';
 
-    baseUrl = 'https://www.severelectro.kg/';
+    baseUrl = 'https://www.severelectro.kg';
     url = this.baseUrl + '/content/article/69-perechen-uchastkov-rabot';
 
     actions: KeyboardAction<string>[] = [];
@@ -48,6 +48,8 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
     async commandHandler(from: 'action' | 'command', ctx: Context<Update> | Context<Update.CallbackQueryUpdate>) {
         try {
             const pageUrls = await this.getPageUrls();
+            console.log(pageUrls);
+            
             pageUrls.sort((a, b) => moment(b[0]).unix() - moment(a[0]).unix());
 
             const actions: KeyboardAction<string>[] = pageUrls.map(([date, url], index) => {
@@ -223,6 +225,8 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
 
     async selectDate(ctx: Context<Update.CallbackQueryUpdate>, url: string): Promise<void> {
         const table = await this.parseOutageTable(url);
+        console.log(table);
+        
         const regions = table.map((el) => el.region);
         const actions = regions.map((el, index) => ({
             name: `select-region-${index + 1}`,
