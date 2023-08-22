@@ -49,7 +49,7 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
         try {
             const pageUrls = await this.getPageUrls();
             console.log(pageUrls);
-            
+
             pageUrls.sort((a, b) => moment(b[0]).unix() - moment(a[0]).unix());
 
             const actions: KeyboardAction<string>[] = pageUrls.map(([date, url], index) => {
@@ -226,7 +226,7 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
     async selectDate(ctx: Context<Update.CallbackQueryUpdate>, url: string): Promise<void> {
         const table = await this.parseOutageTable(url);
         console.log(table);
-        
+
         const regions = table.map((el) => el.region);
         const actions = regions.map((el, index) => ({
             name: `select-region-${index + 1}`,
@@ -237,10 +237,10 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
 
         const actionChunks = 7;
         if (actions.length > actionChunks) {
-            this.registrationActions(actions.slice(0, actionChunks - 1));
+            this.registrationActions(actions.slice(0, actionChunks));
             this.registrationActions(actions.slice(actionChunks, actions.length));
 
-            await this.applyActions(ctx, replyMessage, actions.slice(0, actionChunks - 1));
+            await this.applyActions(ctx, replyMessage, actions.slice(0, actionChunks));
             await this.applyActions(ctx, 'Еще варианты', actions.slice(actionChunks, actions.length));
         } else {
             this.registrationActions(actions);
