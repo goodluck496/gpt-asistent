@@ -48,7 +48,7 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
     async commandHandler(from: 'action' | 'command', ctx: Context<Update> | Context<Update.CallbackQueryUpdate>) {
         try {
             const pageUrls = await this.getPageUrls();
-            console.log(pageUrls);
+            // console.log(pageUrls);
 
             pageUrls.sort((a, b) => moment(b[0]).unix() - moment(a[0]).unix());
 
@@ -62,6 +62,9 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
                     title,
                 };
             });
+
+            console.log('actions', actions);
+            
 
             this.registrationActions(actions.slice(0, 2));
             await this.applyActions(ctx, 'Выберите дату', actions.slice(0, 2));
@@ -86,6 +89,8 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
                 .find('tr')
                 .each((i, row) => {
                     if (i < 2) {
+                        console.log('skip i row');
+                        
                         return;
                     }
 
@@ -98,6 +103,8 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
                         colsHead.shift();
                     } else if (!regionCol.length && colsHead.length === columns.length) {
                         region = $(columns.get(0)).find('p').text();
+                    } else if (!region) {
+                        region = $(regionCol).find('p').text();
                     }
 
                     const rowData: ISingleRowData = colsHead.reduce((acc, curr, index) => {
@@ -224,8 +231,10 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
     }
 
     async selectDate(ctx: Context<Update.CallbackQueryUpdate>, url: string): Promise<void> {
+        console.log('selectDate', url);
+        
         const table = await this.parseOutageTable(url);
-        console.log(table);
+        console.log('table',table);
 
         const regions = table.map((el) => el.region);
         const actions = regions.map((el, index) => ({
