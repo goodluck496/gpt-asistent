@@ -25,7 +25,10 @@ services:
   vtt-vosk-service:
     mem_limit: 5120m
     restart: always
-    image: alphacep/kaldi-ru:latest
+#    image: alphacep/kaldi-ru:latest
+    build:
+        context: .
+        dockerfile: vosk.Dockerfile
     ports:
       - "2700:2700"
     volumes:
