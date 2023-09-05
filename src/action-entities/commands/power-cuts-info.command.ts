@@ -48,9 +48,10 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
     async commandHandler(from: 'action' | 'command', ctx: Context<Update> | Context<Update.CallbackQueryUpdate>) {
         try {
             const pageUrls = await this.getPageUrls();
-            // console.log(pageUrls);
 
-            pageUrls.sort((a, b) => moment(b[0]).unix() - moment(a[0]).unix());
+            pageUrls
+                .filter(([date, url]) => moment(date).month() === moment().month())
+                .sort((a, b) => moment(b[0]).unix() - moment(a[0]).unix());
 
             const actions: KeyboardAction<string>[] = pageUrls.map(([date, url], index) => {
                 const dateFormatted = moment(date).format('DD.MM.Y');
@@ -64,10 +65,9 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
             });
 
             console.log('actions', actions);
-            
 
-            this.registrationActions(actions.slice(0, 2));
-            await this.applyActions(ctx, 'Выберите дату', actions.slice(0, 2));
+            this.registrationActions(actions.slice(0, 3));
+            await this.applyActions(ctx, 'Выберите дату', actions.slice(0, 3));
         } catch (err) {
             console.log('error', err);
         }
@@ -90,7 +90,7 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
                 .each((i, row) => {
                     if (i < 2) {
                         console.log('skip i row');
-                        
+
                         return;
                     }
 
@@ -232,9 +232,9 @@ export class PowerCutsInfoCommand extends BaseCommand implements IBaseCommand {
 
     async selectDate(ctx: Context<Update.CallbackQueryUpdate>, url: string): Promise<void> {
         console.log('selectDate', url);
-        
+
         const table = await this.parseOutageTable(url);
-        console.log('table',table);
+        console.log('table', table);
 
         const regions = table.map((el) => el.region);
         const actions = regions.map((el, index) => ({
